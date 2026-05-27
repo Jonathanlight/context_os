@@ -24,6 +24,7 @@ from contextos.analyzers.agent import (
     completeness,
     contradiction,
     llm_friendly,
+    platform,
 )
 from contextos.ast.agent import AgentDocument
 from contextos.ast.document import Document
@@ -43,6 +44,7 @@ _AGENT_ANALYZERS: tuple[Callable[[AgentDocument, str | None], Iterable[Diagnosti
     completeness.check,
     contradiction.check,
     llm_friendly.check,
+    platform.check,
 )
 
 
