@@ -212,8 +212,10 @@ def compile_cmd(
         typer.echo(rendered)
         return
 
-    output_dir.mkdir(parents=True, exist_ok=True)
     out_path = output_dir / target_filename
+    # Some targets ship nested paths (`.cursor/rules/agent.mdc`); create the
+    # full parent chain rather than just the bare output_dir.
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(rendered, encoding="utf-8")
     typer.echo(f"wrote {out_path}")
 
