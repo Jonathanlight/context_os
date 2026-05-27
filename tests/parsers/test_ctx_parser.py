@@ -1,18 +1,34 @@
-"""Tests for the ``.ctx`` parser (Milestone 1.2a — core happy path + key errors)."""
+"""Tests for the ``.ctx`` parser.
+
+Milestone 1.2a brought the core API + 20 happy/error tests; Milestone 1.2b
+adds fixture-driven coverage, did-you-mean hints, type errors, and the
+round-trip property.
+"""
 
 from __future__ import annotations
 
 import textwrap
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from contextos.ast.common import Severity
 from contextos.parsers import (
     ContextOSParseError,
+    dump_ctx_string,
     parse_ctx_file,
     parse_ctx_string,
 )
+
+FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures" / "ctx"
+VALID_FIXTURES = sorted((FIXTURES_DIR / "valid").glob("*.ctx"))
+INVALID_FIXTURES = sorted((FIXTURES_DIR / "invalid").glob("*.ctx"))
+
+
+def _fixture_id(path: Path) -> str:
+    return path.stem
+
 
 MINIMAL_CTX = textwrap.dedent(
     """
@@ -190,7 +206,7 @@ class TestParseErrors:
             severity = "may"
             """
         ).strip()
-        with pytest.raises(ContextOSParseError, match=r"invalid \[\[rules\]\] entry"):
+        with pytest.raises(ContextOSParseError, match=r"\[\[rules\]\] entry #1"):
             parse_ctx_string(bad)
 
     def test_unknown_field_in_identity_is_reported(self) -> None:
@@ -202,7 +218,7 @@ class TestParseErrors:
             unknown_field = "x"
             """
         ).strip()
-        with pytest.raises(ContextOSParseError, match=r"invalid \[identity\]"):
+        with pytest.raises(ContextOSParseError, match="unknown field 'unknown_field'"):
             parse_ctx_string(bad)
 
     def test_languages_must_be_strings(self) -> None:
@@ -247,3 +263,169 @@ class TestErrorRendering:
             assert "YourProjectName" in exc.suggestion
         else:
             pytest.fail("expected ContextOSParseError")
+
+
+class TestFixtures:
+    """Parametrized coverage over real ``.ctx`` files in tests/fixtures/ctx/."""
+
+    @pytest.mark.parametrize(
+        "path",
+        VALID_FIXTURES,
+        ids=[_fixture_id(p) for p in VALID_FIXTURES],
+    )
+    def test_valid_fixture_parses(self, path: Path) -> None:
+        doc = parse_ctx_file(path)
+        assert doc.project  # every valid fixture has a non-empty project
+        assert doc.agent is not None
+
+    @pytest.mark.parametrize(
+        "path",
+        INVALID_FIXTURES,
+        ids=[_fixture_id(p) for p in INVALID_FIXTURES],
+    )
+    def test_invalid_fixture_raises(self, path: Path) -> None:
+        with pytest.raises(ContextOSParseError):
+            parse_ctx_file(path)
+
+
+class TestDidYouMean:
+    """Did-you-mean hints surface for the most common typos."""
+
+    def test_unknown_root_field_suggests_close_match(self) -> None:
+        try:
+            parse_ctx_string('project = "X"\nlanguges = ["Python"]')
+        except ContextOSParseError as exc:
+            assert "unknown root field 'languges'" in str(exc)
+            assert exc.suggestion is not None
+            assert "languages" in exc.suggestion
+        else:
+            pytest.fail("expected ContextOSParseError")
+
+    def test_unknown_root_field_no_suggestion_for_distant_typo(self) -> None:
+        try:
+            parse_ctx_string('project = "X"\nzzzzz = "huh"')
+        except ContextOSParseError as exc:
+            assert "unknown root field 'zzzzz'" in str(exc)
+            # No suggestion because no close match
+            assert exc.suggestion is None
+        else:
+            pytest.fail("expected ContextOSParseError")
+
+    def test_unknown_identity_field_suggests_close_match(self) -> None:
+        bad = textwrap.dedent(
+            """
+            project = "X"
+            [identity]
+            role = "r"
+            athor = "typo"
+            """
+        ).strip()
+        try:
+            parse_ctx_string(bad)
+        except ContextOSParseError as exc:
+            assert "unknown field 'athor'" in str(exc)
+            assert exc.suggestion is not None
+            assert "author" in exc.suggestion
+        else:
+            pytest.fail("expected ContextOSParseError")
+
+    def test_unknown_rule_field_suggests_close_match(self) -> None:
+        bad = textwrap.dedent(
+            """
+            project = "X"
+            [[rules]]
+            id = "X-001"
+            title = "t"
+            severity = "must"
+            rationle = "typo"
+            """
+        ).strip()
+        try:
+            parse_ctx_string(bad)
+        except ContextOSParseError as exc:
+            assert "unknown field 'rationle'" in str(exc)
+            assert exc.suggestion is not None
+            assert "rationale" in exc.suggestion
+        else:
+            pytest.fail("expected ContextOSParseError")
+
+
+class TestTypeErrors:
+    """Type mismatches produce a focused message naming the bad field."""
+
+    def test_languages_as_int_array_reports_per_entry(self) -> None:
+        try:
+            parse_ctx_string('project = "X"\nlanguages = [1, 2, 3]')
+        except ContextOSParseError as exc:
+            assert "must contain only strings" in str(exc)
+            assert "int" in str(exc)
+        else:
+            pytest.fail("expected ContextOSParseError")
+
+    def test_languages_as_scalar_reports_array_expectation(self) -> None:
+        try:
+            parse_ctx_string('project = "X"\nlanguages = "not-an-array"')
+        except ContextOSParseError as exc:
+            assert "must be an array" in str(exc)
+            assert "str" in str(exc)
+        else:
+            pytest.fail("expected ContextOSParseError")
+
+    def test_identity_as_string_reports_table_expectation(self) -> None:
+        try:
+            parse_ctx_string('project = "X"\nidentity = "should be a table"')
+        except ContextOSParseError as exc:
+            assert "[identity]" in str(exc)
+            assert "TOML table" in str(exc)
+        else:
+            pytest.fail("expected ContextOSParseError")
+
+
+class TestRoundTrip:
+    """``parse → dump → parse`` yields a Document equal modulo positions."""
+
+    def test_full_ctx_round_trips(self) -> None:
+        original = parse_ctx_string(FULL_CTX)
+        dumped = dump_ctx_string(original)
+        reparsed = parse_ctx_string(dumped)
+        assert _strip_positions(original) == _strip_positions(reparsed)
+
+    def test_minimal_ctx_round_trips(self) -> None:
+        original = parse_ctx_string(MINIMAL_CTX)
+        dumped = dump_ctx_string(original)
+        reparsed = parse_ctx_string(dumped)
+        assert _strip_positions(original) == _strip_positions(reparsed)
+
+    @pytest.mark.parametrize(
+        "path",
+        VALID_FIXTURES,
+        ids=[_fixture_id(p) for p in VALID_FIXTURES],
+    )
+    def test_valid_fixtures_round_trip(self, path: Path) -> None:
+        original = parse_ctx_file(path)
+        dumped = dump_ctx_string(original)
+        reparsed = parse_ctx_string(dumped)
+        assert _strip_positions(original) == _strip_positions(reparsed)
+
+    def test_dump_preserves_rule_order(self) -> None:
+        original = parse_ctx_string(FULL_CTX)
+        dumped = dump_ctx_string(original)
+        reparsed = parse_ctx_string(dumped)
+        assert original.agent is not None
+        assert reparsed.agent is not None
+        assert [r.id for r in original.agent.rules] == [r.id for r in reparsed.agent.rules]
+
+
+def _strip_positions(doc: object) -> dict[str, Any]:
+    """Dump a Document modulo per-rule ``position`` fields.
+
+    Positions reflect line numbers in the original source; they will differ
+    after a round-trip because ``dump_ctx_string`` is not byte-stable for
+    whitespace. Semantic round-trip is what we test here.
+    """
+    dump: dict[str, Any] = doc.model_dump()  # type: ignore[attr-defined]
+    agent = dump.get("agent")
+    if isinstance(agent, dict) and "rules" in agent:
+        for rule in agent["rules"]:
+            rule.pop("position", None)
+    return dump

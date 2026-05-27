@@ -1,0 +1,6 @@
+project = "BadSeverity"
+
+[[rules]]
+id = "X-001"
+title = "t"
+severity = "maybe"

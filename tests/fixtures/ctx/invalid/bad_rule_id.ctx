@@ -1,0 +1,6 @@
+project = "BadRuleId"
+
+[[rules]]
+id = "lowercase-fail"
+title = "t"
+severity = "must"

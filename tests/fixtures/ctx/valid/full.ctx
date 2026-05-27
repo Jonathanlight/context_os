@@ -1,0 +1,50 @@
+project = "FullExample"
+ctx_version = "0.3"
+artifacts = ["context"]
+languages = ["Python", "Rust", "TypeScript"]
+authors = ["Jonathan KABLAN", "Example Co-author"]
+version = "1.2.3"
+
+forbidden_patterns = ["raw SQL strings", "wildcard imports", "synchronous HTTP in loops"]
+
+[identity]
+role = "senior backend engineer"
+context = "trading-bot monorepo"
+author = "Jonathan KABLAN"
+
+[stack]
+required = ["python>=3.12", "pydantic>=2.7"]
+forbidden = ["django", "flask"]
+preferred = ["fastapi", "starlette"]
+
+[style]
+conventions = ["4 spaces", "snake_case", "google docstrings"]
+
+[tools]
+required = ["ruff", "mypy", "pytest"]
+forbidden = ["black", "flake8"]
+
+[[rules]]
+id = "TDD-001"
+title = "Write failing test before implementation"
+severity = "must"
+applies_to = ["src"]
+rationale = "Catches regressions before they ship."
+detail = "Every public function must have a test asserting its contract."
+example_good = "def test_parse_minimal(): assert parse('p=\"x\"').project == 'x'"
+example_bad = "no tests in the PR"
+tags = ["tdd", "discipline"]
+links = ["https://example.dev/tdd"]
+
+[[rules]]
+id = "SEC-042"
+title = "Sanitize all user-provided paths"
+severity = "must"
+applies_to = ["api", "cli"]
+rationale = "Prevents path-traversal attacks."
+
+[[rules]]
+id = "PERF-101"
+title = "Avoid N+1 queries in list endpoints"
+severity = "should"
+tags = ["performance", "database"]
