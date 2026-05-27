@@ -20,6 +20,8 @@ _MINIMAL_CTX = textwrap.dedent(
     id = "X-001"
     title = "Use type hints"
     severity = "must"
+    rationale = "Static analysis catches errors before runtime."
+    example_good = "def parse(x: str) -> int: ..."
     """
 ).strip()
 

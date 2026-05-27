@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 
-from contextos.analyzers.agent import ambiguity, llm_friendly
+from contextos.analyzers.agent import ambiguity, completeness, llm_friendly
 from contextos.ast.agent import AgentDocument
 from contextos.ast.document import Document
 from contextos.diagnostics import Diagnostic, DiagnosticBag
@@ -33,6 +33,7 @@ path through their internal helpers.
 
 _AGENT_ANALYZERS: tuple[Callable[[AgentDocument, str | None], Iterable[Diagnostic]], ...] = (
     ambiguity.check,
+    completeness.check,
     llm_friendly.check,
 )
 
