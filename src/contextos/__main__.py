@@ -28,7 +28,7 @@ def _version_callback(value: bool) -> None:
 
 @app.callback()
 def main(
-    version: bool = typer.Option(  # noqa: ARG001 - bound by callback
+    version: bool = typer.Option(
         False,
         "--version",
         "-V",
@@ -37,7 +37,8 @@ def main(
         help="Show ContextOS version and exit.",
     ),
 ) -> None:
-    """Root callback. Subcommands land in Phase 1."""
+    """Root callback. The ``version`` parameter is consumed by the callback."""
+    _ = version
 
 
 if __name__ == "__main__":
