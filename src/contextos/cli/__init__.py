@@ -28,7 +28,7 @@ from contextos import __version__
 from contextos.analyzers import lint_document
 from contextos.ast.document import Document
 from contextos.diagnostics import render_cli_many, render_json_many
-from contextos.emitters import emit_claude_markdown, emit_cursor_mdc
+from contextos.emitters import emit_claude_markdown, emit_codex_markdown
 from contextos.parsers import (
     SUPPORTED_TARGETS,
     ContextOSParseError,
@@ -44,11 +44,11 @@ app = typer.Typer(
     add_completion=False,
 )
 
-# Compilation targets supported by `ctx compile`. Phase 3 adds cursor.
-_COMPILE_TARGETS = ("claude_code", "cursor")
+# Compilation targets supported by `ctx compile`. Phase 3 adds codex.
+_COMPILE_TARGETS = ("claude_code", "codex")
 _TARGET_FILENAMES: dict[str, str] = {
     "claude_code": "CLAUDE.md",
-    "cursor": ".cursor/rules/agent.mdc",
+    "codex": "AGENTS.md",
 }
 
 
@@ -237,8 +237,8 @@ def _render_for_target(doc: Document, *, target: str) -> str:
     """Dispatch to the emitter for the requested target."""
     if target == "claude_code":
         return emit_claude_markdown(doc)
-    if target == "cursor":
-        return emit_cursor_mdc(doc)
+    if target == "codex":
+        return emit_codex_markdown(doc)
     # Guarded upstream by the _COMPILE_TARGETS check; safety net for the future.
     msg = f"no emitter wired for target '{target}'"
     raise RuntimeError(msg)

@@ -1,0 +1,91 @@
+# Target mapping: codex (AGENTS.md, OpenAI Codex-style)
+#
+# AGENTS.md is typically shorter than CLAUDE.md and uses flat bullet
+# lists under each H2 — no H3 sub-sections like Required/Forbidden under
+# Stack. The aliases below capture both the canonical headings and the
+# variations observed in real OpenAI-aligned projects.
+
+target = "codex"
+
+[sections.identity]
+aliases = [
+    "Identity",
+    "About me",
+    "About",
+    "Who I am",
+    "Role",
+    "Author",
+    "Context",
+]
+
+[sections.stack]
+aliases = [
+    "Stack",
+    "Tech stack",
+    "Technical stack",
+]
+# No sub_sections — AGENTS.md convention is a flat list under "## Stack".
+# Items default into the `required` bucket. Authors who need a split can
+# move to the claude_code target.
+
+[sections.rules]
+aliases = [
+    "Rules",
+    "Required practices",
+    "Mandatory",
+    "Conventions",
+    "Required patterns",
+    "Guidelines",
+]
+
+[sections.style]
+aliases = [
+    "Style",
+    "Code style",
+    "Coding style",
+    "Style and conventions",
+]
+
+[sections.forbidden_patterns]
+aliases = [
+    "Forbidden patterns",
+    "Forbidden",
+    "Anti-patterns",
+    "Don't do this",
+    "Never do this",
+]
+
+[sections.tools]
+aliases = [
+    "Tools",
+    "Tooling",
+    "Required tooling",
+    "Tools to use",
+]
+
+# Lexical severity inference, same vocabulary as claude_code. The Markdown
+# parser shares the inference logic; only the alias / sub_sections shape
+# differs between targets.
+[severity_keywords]
+must = [
+    "never",
+    "don't",
+    "do not",
+    "must",
+    "always",
+    "required",
+    "critical",
+]
+should = [
+    "should",
+    "prefer",
+    "recommended",
+    "avoid",
+]
+may = [
+    "may",
+    "can",
+    "could",
+    "optional",
+    "consider",
+]

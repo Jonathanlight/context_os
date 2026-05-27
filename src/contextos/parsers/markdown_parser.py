@@ -42,7 +42,7 @@ from contextos.ast.document import Document
 from contextos.parsers.ctx_parser import ContextOSParseError
 
 MAPPINGS_DIR = Path(__file__).resolve().parent / "targets" / "mappings"
-SUPPORTED_TARGETS = ("claude_code",)
+SUPPORTED_TARGETS = ("claude_code", "codex")
 _GENERATED_RULE_PREFIX = "MD"
 _STRING_SOURCE = "<string>"
 _H2 = 2
