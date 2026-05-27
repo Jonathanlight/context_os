@@ -1,0 +1,70 @@
+# Synthetic RAG manifest in the format ContextOS will emit for the
+# rag_corpus target (LlamaIndex-compatible). Inspired by typical LlamaIndex
+# pipeline configurations. See tests/fixtures/README.md for context.
+
+version: "1.0"
+name: example-policy-kb
+description: Internal HR policy knowledge base for the example company.
+
+embeddings:
+  provider: voyage
+  model: voyage-3
+  dimensions: 1024
+  api_env_var: VOYAGE_API_KEY
+
+vector_store:
+  type: qdrant
+  endpoint: https://qdrant.internal:6333
+  collection: example_policy_v1
+  distance: cosine
+
+chunking:
+  strategy: semantic
+  chunk_size: 500
+  overlap: 50
+  separators: ["\n## ", "\n### ", "\n\n", "\n", ". "]
+
+knowledge_bases:
+  - name: leave_policy
+    description: Annual leave, sick leave, parental leave, sabbatical.
+    when_to_use: "User asks about time off, vacation days, or leave eligibility."
+    sources:
+      - docs/policies/leave/**/*.md
+    update_freq: quarterly
+    priority: 1
+
+  - name: expenses_policy
+    description: Reimbursable expenses, per diem, travel rules.
+    when_to_use: "User asks about expense reimbursement or per diem."
+    sources:
+      - docs/policies/expenses/**/*.md
+    update_freq: monthly
+    priority: 1
+
+  - name: onboarding
+    description: New-hire onboarding documents, first-week guide.
+    sources:
+      - docs/onboarding/**/*.md
+    update_freq: yearly
+    priority: 2
+
+retrieval:
+  top_k: 10
+  score_threshold: 0.55
+  hybrid_search: true
+  mmr_lambda: 0.6
+
+reranking:
+  enabled: true
+  provider: cohere
+  model: cohere-rerank-3
+  top_n: 3
+
+citation:
+  format: "[{name} §{section}]"
+  require_inline: true
+  include_url: true
+
+freshness:
+  policy: 30d
+  stale_action: warn
