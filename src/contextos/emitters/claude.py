@@ -90,6 +90,14 @@ def _emit_identity(identity: Identity) -> list[str]:
 
 
 def _emit_stack(stack: Stack) -> list[str]:
+    """Emit ``## Stack`` only when at least one bucket is populated.
+
+    A Stack with three empty lists collapses to nothing — otherwise emit
+    would produce a bare ``## Stack`` heading that the parser drops on the
+    next read, breaking the idempotence property.
+    """
+    if not (stack.required or stack.forbidden or stack.preferred):
+        return []
     parts: list[str] = ["", "## Stack"]
     parts.extend(_emit_h3_bullets("Required", stack.required))
     parts.extend(_emit_h3_bullets("Forbidden", stack.forbidden))
@@ -119,6 +127,9 @@ def _emit_forbidden_patterns(patterns: list[str]) -> list[str]:
 
 
 def _emit_tools(tools: Tools) -> list[str]:
+    """Emit ``## Tools`` only when at least one bucket is populated."""
+    if not (tools.required or tools.forbidden):
+        return []
     parts: list[str] = ["", "## Tools"]
     parts.extend(_emit_h3_bullets("Required", tools.required))
     parts.extend(_emit_h3_bullets("Forbidden", tools.forbidden))
