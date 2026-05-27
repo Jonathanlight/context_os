@@ -180,3 +180,40 @@ class TestCompile:
         result = runner.invoke(app, ["compile", str(bad), "--target", "claude_code"])
         assert result.exit_code == 1
         assert "missing or empty" in (result.stderr or "")
+
+
+class TestLint:
+    def test_clean_ctx_reports_no_diagnostics(self, tmp_path: Path) -> None:
+        ctx = _write_ctx(tmp_path)
+        result = runner.invoke(app, ["lint", str(ctx)])
+        assert result.exit_code == 0
+        assert "no diagnostics" in result.stdout
+
+    def test_vague_directive_triggers_a001(self, tmp_path: Path) -> None:
+        ctx = tmp_path / "vague.ctx"
+        ctx.write_text(
+            'project = "X"\n[[rules]]\nid = "STYLE-001"\ntitle = "Be concise"\nseverity = "must"\n'
+        )
+        result = runner.invoke(app, ["lint", str(ctx)])
+        # Warning-level diagnostic — exit code stays 0 (no errors).
+        assert result.exit_code == 0
+        assert "warning[A001]" in result.stdout
+        assert "Be concise" in result.stdout
+
+    def test_json_output(self, tmp_path: Path) -> None:
+        ctx = tmp_path / "vague.ctx"
+        ctx.write_text(
+            'project = "X"\n[[rules]]\nid = "STYLE-001"\ntitle = "Be concise"\nseverity = "must"\n'
+        )
+        result = runner.invoke(app, ["lint", str(ctx), "--json"])
+        assert result.exit_code == 0
+        payload = json.loads(result.stdout)
+        assert payload[0]["code"] == "A001"
+        assert payload[0]["severity"] == "warning"
+
+    def test_markdown_input_with_target(self, tmp_path: Path) -> None:
+        md = tmp_path / "CLAUDE.md"
+        md.write_text("# X\n\n## Rules\n\n- Be concise\n")
+        result = runner.invoke(app, ["lint", str(md), "--target", "claude_code"])
+        assert result.exit_code == 0
+        assert "A001" in result.stdout
