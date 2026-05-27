@@ -1,0 +1,42 @@
+---
+description: Next.js 14 + TypeScript project rules for the Cursor AI assistant.
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: false
+---
+
+ASSISTANT RULES
+- Don't apologize.
+- You may ask one clarifying question if the request is ambiguous.
+- Prefer concrete answers with code over conceptual explanations.
+
+TECHNOLOGY STACK
+- Framework: Next.js 14 (App Router)
+- Language: TypeScript strict mode
+- Styling: Tailwind CSS
+- State: React Server Components + Server Actions
+- Database: Postgres via Drizzle
+- Auth: NextAuth.js
+- Deployment: Vercel
+
+CODING STYLE
+- Prefer functional components and hooks; no class components.
+- Server components by default. Mark `"use client"` only when interactivity is required.
+- Use Tailwind utilities; avoid inline styles.
+- Keep components under 200 lines.
+- Modularity over DRY: duplicate twice before extracting.
+
+CODING PROCESS
+- Confirm types before writing logic.
+- Run `tsc --noEmit` mentally before suggesting code.
+- Always return JSX, never strings stringifying JSX.
+
+EDITING CODE
+- V=0: show only the changed lines with a 2-line context.
+- V=1: show the full function.
+- V=2: show the full file.
+- V=3: explain the change in prose AND show the diff.
+
+ASSISTANT_RESPONSE
+- Always wrap code in fenced blocks tagged with the language.
+- Cite file paths as `path/to/file.tsx:42`.
+- Never invent API names that aren't in the project deps.

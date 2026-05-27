@@ -72,6 +72,81 @@ are emerging variants.
 - "When to use" + "Files" + "Example invocation" + "Expected output" sections
 - Triggers via description match, not explicit keywords
 
+## 2.5 Patterns confirmed by initial fixtures (5 artifacts)
+
+The first audit pass landed 5 fixtures in `tests/fixtures/` (see PR
+`phase0(corpus)`). Each was authored from scratch but structurally
+informed by a real public reference. Findings:
+
+### Agent family (3 fixtures)
+
+- **Multiple coexisting structural conventions.** A "monorepo" CLAUDE.md
+  (LangChain-flavored) uses many H2/H3 sections (Architecture, Tools, PR
+  conventions, Core principles, CI/CD), while a "single-maintainer" AGENTS.md
+  uses 5–6 short H2 sections (Identity, Stack, Rules, Style, Forbidden).
+  Both are legitimate. The parser must heuristic the type, not assume one
+  layout.
+- **Severity language is inconsistent.** Observed across fixtures:
+  - Explicit: "must follow", "CRITICAL", "MUST", "Never"
+  - Implicit imperative: "Don't apologize", "Always backtest"
+  - Soft: "Prefer", "Use"
+  The mapping to `severity ∈ {must, should, may}` requires lexical rules
+  (must / never → `must`; should / prefer → `should`; may / can → `may`;
+  imperative without modal → `must` by default).
+- **Cursor `.mdc` is structurally different.** YAML frontmatter (description,
+  globs, alwaysApply) + ALL-CAPS section markers + dense bullet lists. No
+  H1/H2. The parser needs a dedicated mapping for `.mdc`.
+- **PR conventions live in CLAUDE.md.** Conventional Commits, branching,
+  commit titles. These are project-level rules, not code-level. The `[[rules]]`
+  schema must accept `applies_to: ["workflow", "vcs"]` cleanly.
+
+### Skill family (1 fixture)
+
+- **Frontmatter is the activation contract.** `name` + `description` drive
+  trigger matching; everything in the body is documentation for the LLM
+  once activated. The S001 (vague description) and S002 (too generic)
+  rules are the most consequential.
+- **Body sections converge** around `Overview`, `When to use this skill`,
+  `Do NOT use this skill for`, `Workflow` (numbered steps in imperative),
+  `Files in this skill` (bullet list referencing real files), `Example
+  invocation` (single user prompt), `Expected output` (JSON or template).
+- **Anti-pattern: "compatibility" field.** The official Anthropic format
+  does not standardize a `compatibility:` field in the frontmatter; this
+  fixture pins one to flag the future S-rule. Body-resident runtime
+  declarations (e.g. in `Overview`) are the convention.
+
+### RAG family (1 fixture)
+
+- **LlamaIndex is code-configured.** The Python `Settings` singleton sets
+  `llm`, `embed_model`, `chunk_size`, `chunk_overlap`, `context_window`,
+  `transformations`. There is no canonical YAML/JSON. ContextOS therefore
+  defines its **own** portable manifest format (the fixture
+  `llamaindex_style_manifest.yaml`), which the `rag_corpus` emitter will
+  produce.
+- **Embeddings provider lock-in is real.** Voyage / Cohere / OpenAI /
+  Anthropic each pin dimensions and API contracts. The manifest captures
+  `embedding_dimensions` explicitly to detect mismatches with the vector
+  store config.
+- **Knowledge base granularity.** A single corpus often has 2–5 distinct
+  KBs (leave policy, expenses, onboarding…) with different `when_to_use`
+  hints. The manifest supports a list of `knowledge_bases`, each with its
+  own glob, refresh frequency, and priority.
+
+### Calibration impact
+
+These observations suggest:
+
+- **S007 threshold** (SKILL.md too long > 200 lines): the fixture lands at
+  ~70 lines body. The 200-line ceiling is comfortably above typical good
+  skills.
+- **Cursor `.mdc` parser is a Phase 3 priority** — it shares no structural
+  DNA with the H2-based agent files.
+- **Cross-artifact rules** (XA001–XA004) need a richer model than initially
+  scoped: the cursor `.mdc` may contradict the CLAUDE.md not literally but
+  in spirit (e.g. CLAUDE.md says "use type hints", `.mdc` says "TypeScript
+  strict mode" — same intent, different vocabulary). NLI-based detection
+  is realistic, lexical-only is not.
+
 ## 3. Phase 0 audit methodology
 
 ### Sample composition (target: 40–60 artifacts)
