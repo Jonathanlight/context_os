@@ -20,12 +20,13 @@ full schema, position tracking on every field).
 
 from __future__ import annotations
 
+import difflib
 import re
 from pathlib import Path
 from typing import Any
 
 import tomlkit
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 from tomlkit.exceptions import TOMLKitError
 
 from contextos.ast.agent import (
@@ -46,8 +47,35 @@ Phase 5 will add ``"skills"``, Phase 6 ``"rag"``. Until then we fail loudly
 rather than silently dropping unsupported sections.
 """
 
+KNOWN_ROOT_FIELDS = frozenset(
+    {
+        "project",
+        "ctx_version",
+        "artifacts",
+        "languages",
+        "authors",
+        "targets",
+        "version",
+        "identity",
+        "stack",
+        "style",
+        "tools",
+        "rules",
+        "forbidden_patterns",
+    }
+)
+"""Every root-level key a ``.ctx`` source may carry in the context family.
+
+Used by :func:`parse_ctx_string` to surface ``did-you-mean`` hints when an
+author typos a top-level field. Sub-section field names live on the
+Pydantic models themselves and are extracted via ``model_fields`` at error
+time.
+"""
+
 _RULES_HEADER_RE = re.compile(r"^\s*\[\[\s*rules\s*\]\]\s*(?:#.*)?$", re.MULTILINE)
 _STRING_SOURCE = "<string>"
+_DID_YOU_MEAN_CUTOFF = 0.6
+_DID_YOU_MEAN_LIMIT = 1
 
 
 class ContextOSParseError(Exception):
@@ -117,6 +145,8 @@ def parse_ctx_string(content: str, source: str = _STRING_SOURCE) -> Document:
             suggestion='add `project = "YourProjectName"` at the top',
         )
 
+    _check_root_field_names(data, source=source)
+
     artifacts_raw = data.get("artifacts", ["context"])
     if not isinstance(artifacts_raw, list) or not artifacts_raw:
         raise ContextOSParseError(
@@ -184,7 +214,7 @@ def _build_agent_document(
 
 
 def _build_optional(
-    model_cls: Any,
+    model_cls: type[BaseModel],
     value: Any,
     field: str,
     source: str,
@@ -200,7 +230,8 @@ def _build_optional(
     try:
         return model_cls(**value)
     except ValidationError as exc:
-        raise ContextOSParseError(f"invalid [{field}] section: {exc}", source=source) from exc
+        message, suggestion = _format_validation_error(exc, model_cls=model_cls, section=field)
+        raise ContextOSParseError(message, source=source, suggestion=suggestion) from exc
 
 
 def _build_rules(
@@ -247,10 +278,14 @@ def _build_rules(
         try:
             rules.append(Rule(**kwargs))
         except ValidationError as exc:
+            message, suggestion = _format_validation_error(
+                exc, model_cls=Rule, section=f"[[rules]] entry #{i + 1}"
+            )
             raise ContextOSParseError(
-                f"invalid [[rules]] entry #{i + 1}: {exc}",
+                message,
                 source=source,
                 position=position,
+                suggestion=suggestion,
             ) from exc
     return rules
 
@@ -258,10 +293,223 @@ def _build_rules(
 def _string_list(value: Any, *, field: str, source: str) -> list[str]:
     """Validate that ``value`` is a list of strings and return a fresh copy."""
     if not isinstance(value, list):
-        raise ContextOSParseError(f"'{field}' must be an array", source=source)
+        raise ContextOSParseError(
+            f"'{field}' must be an array, got {_type_name(value)}",
+            source=source,
+        )
     out: list[str] = []
     for item in value:
         if not isinstance(item, str):
-            raise ContextOSParseError(f"'{field}' must contain only strings", source=source)
+            raise ContextOSParseError(
+                f"'{field}' must contain only strings; found {_type_name(item)} entry",
+                source=source,
+            )
         out.append(item)
     return out
+
+
+def _check_root_field_names(data: dict[str, Any], *, source: str) -> None:
+    """Raise if a root-level key is not in :data:`KNOWN_ROOT_FIELDS`.
+
+    Catches typos like ``projct`` or ``rulez`` at the earliest opportunity,
+    before Pydantic's per-field validators run.
+    """
+    for key in data:
+        if key in KNOWN_ROOT_FIELDS:
+            continue
+        suggestion = _did_you_mean(key, KNOWN_ROOT_FIELDS)
+        raise ContextOSParseError(
+            f"unknown root field '{key}'",
+            source=source,
+            suggestion=suggestion,
+        )
+
+
+def _format_validation_error(
+    exc: ValidationError,
+    *,
+    model_cls: type[BaseModel],
+    section: str,
+) -> tuple[str, str | None]:
+    """Turn a Pydantic ValidationError into ``(message, suggestion)``.
+
+    Handles three common cases with friendly messages:
+
+    - ``extra_forbidden`` → ``unknown field 'foo'`` + did-you-mean hint
+    - ``string_type`` / ``list_type`` / ``int_type`` → wrong type
+    - anything else → the verbatim Pydantic message
+
+    Multiple Pydantic errors collapse to the first one; the others surface
+    via the original exception's ``__cause__`` chain.
+    """
+    errors = exc.errors()
+    if not errors:
+        return f"invalid {section}: {exc}", None
+
+    err = errors[0]
+    loc = err.get("loc", ())
+    err_type = err.get("type", "")
+    field = loc[0] if loc else "?"
+
+    if err_type == "extra_forbidden":
+        valid = set(model_cls.model_fields.keys())
+        hint = _did_you_mean(str(field), valid)
+        return f"unknown field '{field}' in {section}", hint
+
+    if err_type.endswith("_type"):
+        expected = err_type.removesuffix("_type")
+        got = _type_name(err.get("input"))
+        return (
+            f"field '{field}' in {section} expected {expected}, got {got}",
+            None,
+        )
+
+    if err_type == "missing":
+        return (
+            f"field '{field}' is required in {section}",
+            f"add `{field} = ...`",
+        )
+
+    return f"invalid {section}: {err.get('msg', exc)}", None
+
+
+def _did_you_mean(unknown: str, candidates: frozenset[str] | set[str]) -> str | None:
+    """Return a ``did you mean 'X'?`` hint via :mod:`difflib`, or None."""
+    matches = difflib.get_close_matches(
+        unknown,
+        candidates,
+        n=_DID_YOU_MEAN_LIMIT,
+        cutoff=_DID_YOU_MEAN_CUTOFF,
+    )
+    if matches:
+        return f"did you mean '{matches[0]}'?"
+    return None
+
+
+def _type_name(value: Any) -> str:
+    """Human-readable name for a value's Python type.
+
+    Used in error messages — TOML-flavored ("array", "table") rather than
+    Python-flavored ("list", "dict") since users author TOML, not Python.
+    """
+    # Order matters: bool is a subclass of int, so it must be checked first.
+    if value is None:
+        return "null"
+    type_map: tuple[tuple[type, str], ...] = (
+        (bool, "bool"),
+        (int, "int"),
+        (float, "float"),
+        (str, "str"),
+        (list, "array"),
+        (dict, "table"),
+    )
+    for cls, name in type_map:
+        if isinstance(value, cls):
+            return name
+    return type(value).__name__
+
+
+def dump_ctx_string(doc: Document) -> str:
+    """Serialize a :class:`Document` back to canonical ``.ctx`` TOML.
+
+    Output is **semantically** equivalent to whatever produced ``doc`` — not
+    necessarily byte-identical (comments and original whitespace are not
+    preserved here). Byte-stable emission is a Milestone 1.5 goal for the
+    Markdown emitter; the TOML side only commits to round-tripping the AST.
+
+    Used by the round-trip test in Milestone 1.2b and as a building block
+    for ``ctx parse … --to-ctx`` (Milestone 1.7 CLI).
+    """
+    td = tomlkit.document()
+    td["project"] = doc.project
+    if doc.ctx_version != "0.3":
+        td["ctx_version"] = doc.ctx_version
+    td["artifacts"] = ["context"]
+    if doc.languages:
+        td["languages"] = list(doc.languages)
+    if doc.authors:
+        td["authors"] = list(doc.authors)
+    if doc.version != "0.1.0":
+        td["version"] = doc.version
+
+    agent = doc.agent
+    if agent is None:
+        return tomlkit.dumps(td)
+
+    if agent.forbidden_patterns:
+        td["forbidden_patterns"] = list(agent.forbidden_patterns)
+
+    if agent.identity is not None:
+        td["identity"] = _dump_optional_table(
+            {
+                "role": agent.identity.role,
+                "context": agent.identity.context,
+                "author": agent.identity.author,
+            }
+        )
+
+    if agent.stack is not None and (
+        agent.stack.required or agent.stack.forbidden or agent.stack.preferred
+    ):
+        td["stack"] = _dump_optional_table(
+            {
+                "required": agent.stack.required or None,
+                "forbidden": agent.stack.forbidden or None,
+                "preferred": agent.stack.preferred or None,
+            }
+        )
+
+    if agent.style is not None and agent.style.conventions:
+        td["style"] = _dump_optional_table({"conventions": agent.style.conventions})
+
+    if agent.tools is not None and (agent.tools.required or agent.tools.forbidden):
+        td["tools"] = _dump_optional_table(
+            {
+                "required": agent.tools.required or None,
+                "forbidden": agent.tools.forbidden or None,
+            }
+        )
+
+    if agent.rules:
+        rules_aot = tomlkit.aot()
+        for rule in agent.rules:
+            rules_aot.append(_dump_rule(rule))
+        td["rules"] = rules_aot
+
+    return tomlkit.dumps(td)
+
+
+def _dump_optional_table(fields: dict[str, Any]) -> Any:
+    """Build a tomlkit table dropping keys whose value is ``None`` or empty."""
+    table = tomlkit.table()
+    for key, value in fields.items():
+        if value is None:
+            continue
+        if isinstance(value, list):
+            table[key] = list(value)
+        else:
+            table[key] = value
+    return table
+
+
+def _dump_rule(rule: Rule) -> Any:
+    """Serialize a single :class:`Rule` as a tomlkit table for AoT emission."""
+    table = tomlkit.table()
+    table["id"] = rule.id
+    table["title"] = rule.title
+    table["severity"] = rule.severity.value
+    if rule.applies_to:
+        table["applies_to"] = list(rule.applies_to)
+    if rule.rationale is not None:
+        table["rationale"] = rule.rationale
+    if rule.detail is not None:
+        table["detail"] = rule.detail
+    if rule.example_good is not None:
+        table["example_good"] = rule.example_good
+    if rule.example_bad is not None:
+        table["example_bad"] = rule.example_bad
+    if rule.tags:
+        table["tags"] = list(rule.tags)
+    if rule.links:
+        table["links"] = list(rule.links)
+    return table

@@ -1,0 +1,4 @@
+project = "IdentityOnly"
+
+[identity]
+role = "solo maintainer"

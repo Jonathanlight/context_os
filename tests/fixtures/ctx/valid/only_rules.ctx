@@ -1,0 +1,11 @@
+project = "RulesOnly"
+
+[[rules]]
+id = "STYLE-001"
+title = "Use 4 spaces"
+severity = "must"
+
+[[rules]]
+id = "STYLE-002"
+title = "Imports sorted by isort"
+severity = "should"

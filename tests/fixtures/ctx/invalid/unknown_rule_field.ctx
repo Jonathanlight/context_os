@@ -1,0 +1,7 @@
+project = "BadRuleField"
+
+[[rules]]
+id = "X-001"
+title = "Has a typo'd field"
+severity = "must"
+appllies_to = ["src"]

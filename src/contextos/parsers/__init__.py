@@ -9,12 +9,14 @@ from __future__ import annotations
 
 from contextos.parsers.ctx_parser import (
     ContextOSParseError,
+    dump_ctx_string,
     parse_ctx_file,
     parse_ctx_string,
 )
 
 __all__ = [
     "ContextOSParseError",
+    "dump_ctx_string",
     "parse_ctx_file",
     "parse_ctx_string",
 ]
