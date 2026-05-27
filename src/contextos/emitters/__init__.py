@@ -9,5 +9,6 @@ manifest emitter.
 from __future__ import annotations
 
 from contextos.emitters.claude import emit_claude_markdown
+from contextos.emitters.codex import emit_codex_markdown
 
-__all__ = ["emit_claude_markdown"]
+__all__ = ["emit_claude_markdown", "emit_codex_markdown"]
