@@ -5,7 +5,7 @@ from __future__ import annotations
 from typer.testing import CliRunner
 
 import contextos
-from contextos.__main__ import app
+from contextos.cli import app
 
 
 def test_package_imports() -> None:

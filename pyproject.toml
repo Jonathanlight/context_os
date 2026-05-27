@@ -38,7 +38,7 @@ dev = [
 ]
 
 [project.scripts]
-ctx = "contextos.__main__:app"
+ctx = "contextos.cli:app"
 
 [project.urls]
 Homepage = "https://github.com/Jonathanlight/context_os"

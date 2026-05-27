@@ -1,45 +1,14 @@
-"""Entry point for the `ctx` CLI.
+"""Allow ``python -m contextos`` to launch the CLI.
 
-The CLI is a thin Typer wrapper. Subcommands land in Phase 1 (parse, compile,
-lint, diff, audit, new). For now only `--version` is exposed so that
-`ctx --version` works after installation, and the package can be smoke-tested
-through `python -m contextos`.
+The Typer app and its subcommands live in :mod:`contextos.cli`. This
+module is the standard Python ``__main__`` shim that delegates to it, so
+both ``python -m contextos`` and the installed ``ctx`` console script
+share one implementation.
 """
 
 from __future__ import annotations
 
-import typer
-
-from contextos import __version__
-
-app = typer.Typer(
-    name="ctx",
-    help="ContextOS — the operating system for LLM context.",
-    no_args_is_help=True,
-    add_completion=False,
-)
-
-
-def _version_callback(value: bool) -> None:
-    if value:
-        typer.echo(f"contextos {__version__}")
-        raise typer.Exit
-
-
-@app.callback()
-def main(
-    version: bool = typer.Option(
-        False,
-        "--version",
-        "-V",
-        callback=_version_callback,
-        is_eager=True,
-        help="Show ContextOS version and exit.",
-    ),
-) -> None:
-    """Root callback. The ``version`` parameter is consumed by the callback."""
-    _ = version
-
+from contextos.cli import app
 
 if __name__ == "__main__":
     app()
