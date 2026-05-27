@@ -25,7 +25,9 @@ from typing import Annotated
 import typer
 
 from contextos import __version__
+from contextos.analyzers import lint_document
 from contextos.ast.document import Document
+from contextos.diagnostics import render_cli_many, render_json_many
 from contextos.emitters import emit_claude_markdown
 from contextos.parsers import (
     SUPPORTED_TARGETS,
@@ -107,6 +109,46 @@ def parse(
 
     rendered = dump_ctx_string(doc) if to_ctx else doc.model_dump_json(indent=2)
     _emit_payload(rendered, output=output)
+
+
+_LINT_FILE_HELP = "Source file. ``.ctx`` is parsed directly; other suffixes need --target."
+_LINT_TARGET_HELP = (
+    f"Required for non-``.ctx`` inputs (e.g. CLAUDE.md). Supported: {', '.join(SUPPORTED_TARGETS)}."
+)
+
+LintFile = Annotated[
+    Path,
+    typer.Argument(exists=True, dir_okay=False, readable=True, help=_LINT_FILE_HELP),
+]
+LintTarget = Annotated[str | None, typer.Option("--target", "-t", help=_LINT_TARGET_HELP)]
+LintJson = Annotated[bool, typer.Option("--json", help="Emit machine-readable JSON.")]
+LintNoColor = Annotated[bool, typer.Option("--no-color", help="Disable ANSI colors in CLI output.")]
+
+
+@app.command()
+def lint(
+    file: LintFile,
+    target: LintTarget = None,
+    json_output: LintJson = False,
+    no_color: LintNoColor = False,
+) -> None:
+    """Lint a ``.ctx`` or Markdown context file and report diagnostics."""
+    try:
+        doc = _dispatch_parse(file, target=target)
+    except ContextOSParseError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    bag = lint_document(doc, source=str(file))
+
+    if json_output:
+        typer.echo(render_json_many(bag, indent=2))
+    elif not bag:
+        typer.echo("no diagnostics")
+    else:
+        typer.echo(render_cli_many(bag, color=not no_color))
+
+    raise typer.Exit(code=1 if bag.has_errors() else 0)
 
 
 _COMPILE_TARGET_HELP = f"Output target. Supported: {', '.join(_COMPILE_TARGETS)}."
