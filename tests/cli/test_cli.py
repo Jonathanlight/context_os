@@ -183,6 +183,28 @@ class TestCompile:
         assert result.exit_code == 1
         assert "missing or empty" in (result.stderr or "")
 
+    def test_cursor_target_writes_nested_mdc(self, tmp_path: Path) -> None:
+        ctx = _write_ctx(tmp_path)
+        out_dir = tmp_path / "out"
+        result = runner.invoke(
+            app,
+            ["compile", str(ctx), "--target", "cursor", "--output-dir", str(out_dir)],
+        )
+        assert result.exit_code == 0
+        # Cursor target writes to .cursor/rules/agent.mdc under the output dir.
+        written = out_dir / ".cursor" / "rules" / "agent.mdc"
+        assert written.exists()
+        body = written.read_text(encoding="utf-8")
+        assert body.startswith("---\n")
+        assert "description: Rules for CLISample" in body
+
+    def test_cursor_target_stdout_when_no_output_dir(self, tmp_path: Path) -> None:
+        ctx = _write_ctx(tmp_path)
+        result = runner.invoke(app, ["compile", str(ctx), "--target", "cursor"])
+        assert result.exit_code == 0
+        assert result.stdout.startswith("---\n")
+        assert "ASSISTANT RULES" in result.stdout
+
 
 class TestLint:
     def test_clean_ctx_reports_no_diagnostics(self, tmp_path: Path) -> None:
