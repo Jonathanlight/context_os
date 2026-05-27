@@ -16,9 +16,21 @@ repo at once.
 
 ## Status
 
-🚧 **Phase 0 — Foundation.** No usable release yet. The first release `v0.1.0`
-will ship the parser, AST, and Claude emitter. See
-[`docs/specs/ROADMAP.md`](docs/specs/ROADMAP.md) once it lands.
+🎉 **v0.1.0 — Phase 1 complete.** Parser, AST, and Claude emitter ship as
+the first usable release.
+
+```bash
+pipx install context-os
+ctx --version
+ctx compile project.ctx --target claude_code
+ctx parse CLAUDE.md --target claude_code --to-ctx
+```
+
+What's next: Phase 2 lint rules (30+ across A / C / K / X / F / P
+categories), then Phase 3 multi-target emitters (Codex, Cursor,
+Copilot, Cline, Windsurf), Phase 4 launch v1.0, Phase 5 Skills,
+Phase 6 RAG. See [`docs/specs/ROADMAP.md`](docs/specs/ROADMAP.md) and
+[`CHANGELOG.md`](CHANGELOG.md).
 
 ## Stack
 
