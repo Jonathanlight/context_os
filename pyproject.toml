@@ -1,0 +1,100 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "context-os"
+version = "0.0.0"
+description = "The Operating System for LLM Context — analyze, generate, and compare LLM context artifacts."
+authors = [{ name = "Jonathan KABLAN" }]
+requires-python = ">=3.12"
+license = { text = "MIT" }
+readme = "README.md"
+keywords = ["llm", "context", "ai", "rag", "skills", "lint", "claude", "agents"]
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Code Generators",
+]
+dependencies = [
+    "pydantic>=2.7",
+    "typer>=0.12",
+    "tomlkit>=0.12",
+    "mistletoe>=1.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "hypothesis>=6.100",
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "pre-commit>=3.7",
+]
+
+[project.scripts]
+ctx = "contextos.__main__:app"
+
+[project.urls]
+Homepage = "https://github.com/Jonathanlight/context_os"
+Repository = "https://github.com/Jonathanlight/context_os"
+Issues = "https://github.com/Jonathanlight/context_os/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/contextos"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "A",   # flake8-builtins
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "RET", # flake8-return
+    "PL",  # pylint
+    "RUF", # ruff-specific
+]
+ignore = ["PLR0913"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*" = ["PLR2004"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src", "tests"]
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --cov=contextos --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["src/contextos"]
+branch = true
+
+[tool.coverage.report]
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "\\.\\.\\.",
+]
