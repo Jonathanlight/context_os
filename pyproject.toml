@@ -25,6 +25,7 @@ dependencies = [
     "typer>=0.12",
     "tomlkit>=0.12",
     "mistletoe>=1.3",
+    "ruamel.yaml>=0.18",
 ]
 
 [project.optional-dependencies]
