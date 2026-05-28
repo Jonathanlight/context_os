@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [4.0.1] — 2026-05-28
+
+Hotfix release. The shipped feature set is identical to v4.0.0 — this
+bump exists so the freshly-renamed distribution can land on PyPI
+under `context-os-ctx` without colliding with the v4.0.0 git tag
+(which was cut before the rename and would carry the wrong `name:`
+in `pyproject.toml`).
+
 ### Changed
 
 - **PyPI distribution name renamed** from `context-os` to

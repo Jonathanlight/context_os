@@ -7,6 +7,6 @@ configurations. See docs/specs/VISION.md for the full vision.
 
 from __future__ import annotations
 
-__version__ = "4.0.0"
+__version__ = "4.0.1"
 
 __all__ = ["__version__"]
