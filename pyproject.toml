@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "context-os"
-version = "0.1.0"
+version = "2.0.0"
 description = "The Operating System for LLM Context — analyze, generate, and compare LLM context artifacts."
 authors = [{ name = "Jonathan KABLAN" }]
 requires-python = ">=3.12"
@@ -12,7 +12,7 @@ license = { text = "MIT" }
 readme = "README.md"
 keywords = ["llm", "context", "ai", "rag", "skills", "lint", "claude", "agents"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.12",

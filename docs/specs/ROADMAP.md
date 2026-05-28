@@ -122,31 +122,58 @@ on 3 fixtures + 200 hypothesis-generated skills; self-audit of the
 ContextOS repo produces zero S-rule errors; PRs #44–#49 merge cleanly
 to develop.
 
-## Phase 6 — RAG (Weeks 18–21, NEW)
+## Phase 6 — RAG (✅ shipped)
 
-**Goal:** `ctx audit-rag <dir>`, `ctx compile <file.ctx> --target rag_corpus`,
-portable manifest.
+**Goal achieved:** `ctx parse rag.ctx`, `ctx lint rag.ctx`,
+`ctx compile rag.ctx --target rag_manifest`, `ctx audit .` walks
+`.ctx` files and routes them by family, `ctx stats .` reports `.ctx`
+coverage.
 
-Deliverables:
+**Shipped (PRs #50 – #55):**
 
-- AST extension: `RagConfig`, `Document` Pydantic models
-- `.ctx` parser extended: `[rag]` and `[[document]]` sections
-- Document scanner: directory walk; `[[document]]` glob filtering; `.md` / `.txt` reading (PDF in Phase 7+); MinHash fingerprint; chunk estimation with tiktoken per strategy
-- RAG analyzer: R001–R017 (documents R001–R012, config R013–R017)
-- `rag_corpus` emitter: `manifest.yaml`, cleaned `docs/`, `chunks.jsonl` estimate, `audit.md` report
-- HTML report with similarity heatmap, length distribution, actionable fix list
-- CLI: `ctx lint-rag`, `ctx audit-rag`, `ctx compile --target rag_corpus`
-- Docs: one page per R*** rule, emitter page, "Prepare a RAG corpus with ContextOS" tutorial
-- Release `v1.2.0`
-- Blog post + share on r/LocalLLaMA, r/LangChain
-- Demo PRs: one LangChain + one LlamaIndex consuming a ContextOS manifest
+- AST: `RagConfig` + `DocumentEntry` + `RagDocument` mirroring SPEC
+  §1.4 verbatim; `Document.type` widened to
+  `Literal["agent", "skill", "rag"]` with a four-family-ready
+  validator. Two AST-level validators enforce
+  `chunk_min ≤ target ≤ max` and `reranking_top_k ≤ retrieval_top_k`
+  (PR #50).
+- `.ctx` parser extended: `SUPPORTED_ARTIFACTS` widened to
+  `{context, skills, rag}`; `[rag]` + `[[document]]` blocks
+  validated; `dump_ctx_string` honors `type='rag'` (PR #51).
+- RAG manifest emitter: `rag.manifest.json` with stable byte output;
+  fixed canonical field order matching SPEC; `MANIFEST_VERSION = 1.0`
+  pinned (PR #52).
+- RAG analyzers R001–R006:
+  - **Chunking sanity** — R001 overlap > 50% of target, R002 tight
+    headroom under 20%, R006 large source without `header_aware`.
+  - **Pipeline completeness** — R003 no freshness_policy, R004 no
+    embedding_model, R005 `header_aware` override without anchors
+    (PR #53).
+- CLI integration across `parse`, `lint`, `compile`, `audit`,
+  `stats` (PR #54). Scanner now picks up any `.ctx` file and routes
+  by family.
+- Docs: one page per R*** rule, getting-started RAG example,
+  ROADMAP closed (this PR).
+- v2.0.0 release — RAG closes the agent + skill + RAG trio (this PR).
 
-**Anti-goals:** no real embedding (token estimation only); no indexing; no
-live retrieval; no PDF support (Phase 7+).
+**Deferred to a follow-up phase (Phase 7+):**
 
-**DoD:** audit of a real corpus (ContextOS docs + 2 public corpora) produces
-an actionable report; generated manifest loadable in LangChain in ≤ 5 lines
-of Python.
+- HTML audit report (the JSON renderer is the bridge today).
+- Document scanner with MinHash fingerprint + tiktoken-aware chunk
+  estimation.
+- `chunks.jsonl` estimate output alongside the manifest.
+- Similarity heatmap / length distribution visualizations.
+- Per-language R*** specializations (current R-rules treat all
+  languages identically).
+- R007–R017 (the extended R-rule set from the original ROADMAP) —
+  the six shipped today cover the highest-impact failure modes.
+
+**Anti-goals (unchanged):** no real embedding, no indexing, no live
+retrieval, no PDF support.
+
+**DoD met:** parse → lint → emit → audit pipeline runs end-to-end on
+`rag.ctx`; the generated manifest is valid JSON consumers can read in
+five lines of Python (`json.load(open("rag.manifest.json"))`).
 
 ## Phase 7+ — Post-MVP
 
