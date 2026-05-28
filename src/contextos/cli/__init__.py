@@ -385,6 +385,27 @@ def compile_cmd(
     typer.echo(f"wrote {out_path}")
 
 
+@app.command(name="lsp")
+def lsp_cmd() -> None:
+    """Run the ContextOS language server over stdio.
+
+    Requires the ``lsp`` extras (``pipx install context-os[lsp]``).
+    Phase 7.1 ships stdio transport only — TCP / WebSocket lands later
+    if downstream editors need it. The server is consumed by the
+    ``contextos-vscode`` extension shipped in Phase 7.4, or by any
+    LSP-aware editor (Neovim ``lspconfig``, Helix, Sublime LSP, …).
+    """
+    try:
+        from contextos.lsp import run_stdio  # noqa: PLC0415 — lazy by design
+    except ImportError as exc:  # pragma: no cover — guarded import
+        typer.echo(
+            "ctx lsp requires the 'lsp' extras: `pip install context-os[lsp]`",
+            err=True,
+        )
+        raise typer.Exit(code=1) from exc
+    run_stdio()
+
+
 def _dispatch_parse(file: Path, *, target: str | None) -> Document:
     """Pick the right parser based on file extension and explicit target.
 

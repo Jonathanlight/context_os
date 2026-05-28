@@ -36,10 +36,14 @@ dev = [
     "ruff>=0.5",
     "mypy>=1.10",
     "pre-commit>=3.7",
+    "pygls>=2.0",
 ]
 docs = [
     "mkdocs>=1.5",
     "mkdocs-material>=9.0",
+]
+lsp = [
+    "pygls>=2.0",
 ]
 
 [project.scripts]
