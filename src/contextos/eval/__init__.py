@@ -25,6 +25,11 @@ importable without the extras — that's the surface tests use.
 
 from __future__ import annotations
 
+from contextos.eval.diff import (
+    CaseChange,
+    EvalDiff,
+    compute_eval_diff,
+)
 from contextos.eval.providers import (
     MockSkillProvider,
     RoutingResponse,
@@ -42,8 +47,10 @@ from contextos.eval.results import EvalCaseResult, EvalRunResult
 from contextos.eval.runner import SkillEvalRunner
 
 __all__ = [
+    "CaseChange",
     "Chunk",
     "EvalCaseResult",
+    "EvalDiff",
     "EvalRunResult",
     "MockRagProvider",
     "MockSkillProvider",
@@ -54,4 +61,5 @@ __all__ = [
     "SkillEvalRunner",
     "SkillRoutingProvider",
     "TokenUsage",
+    "compute_eval_diff",
 ]
