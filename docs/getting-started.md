@@ -210,11 +210,61 @@ ctx compile skill.ctx --target anthropic_skill --output-dir .
 # wrote ./SKILL.md
 ```
 
+## Lint and compile a RAG corpus
+
+ContextOS also covers the third LLM-context family: **RAG corpora**.
+A `.ctx` declaring `artifacts=['rag']` describes the retrieval
+pipeline (chunking, embedding, reranking, freshness) plus the source
+files to index:
+
+```toml
+# rag.ctx
+project = "PolicyCorpus"
+artifacts = ["rag"]
+
+[rag]
+chunking_strategy = "semantic"
+chunk_target_tokens = 500
+chunk_overlap_tokens = 50
+chunk_min_tokens = 100
+chunk_max_tokens = 1500
+embedding_model = "voyage-3"
+embedding_dimensions = 1024
+freshness_policy = "30d"
+language_default = "fr"
+
+[[document]]
+source = "docs/policies/**/*.md"
+tags = ["policy", "internal"]
+freshness_required = "30d"
+chunking_override = "header_aware"
+required_anchors = ["##"]
+```
+
+Six dedicated lint rules (`R001`–`R006`) cover the failure modes
+specific to RAG — excessive chunk overlap, missing embedding model,
+header_aware chunking without anchors:
+
+```bash
+ctx lint rag.ctx
+```
+
+Compile the corpus to a JSON manifest the indexer (Qdrant, Pinecone,
+or your own implementation) consumes:
+
+```bash
+ctx compile rag.ctx --target rag_manifest --output-dir .
+# wrote ./rag.manifest.json
+```
+
+The manifest is the **contract** ContextOS exposes — ContextOS doesn't
+execute the pipeline; the indexer reads the JSON and runs it.
+
 ## What's next?
 
 - Read the [Vision](specs/VISION.md) and [Spec](specs/SPEC.md) docs to
   understand the architecture.
 - Browse the [rules catalog](rules/index.md) to see what each diagnostic
   catches.
-- Check the [Roadmap](specs/ROADMAP.md) for what's coming in Phase 6
-  (RAG corpora).
+- Check the [Roadmap](specs/ROADMAP.md) for what's coming after the
+  v2.0 trio (agent + skill + RAG).

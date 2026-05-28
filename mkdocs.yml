@@ -101,3 +101,10 @@ nav:
           - S004 missing example_invocation: rules/S004.md
           - S005 body H1 mismatch: rules/S005.md
           - S006 redundant trigger_keywords: rules/S006.md
+      - RAG:
+          - R001 excessive chunk overlap: rules/R001.md
+          - R002 tight chunk headroom: rules/R002.md
+          - R003 missing freshness_policy: rules/R003.md
+          - R004 missing embedding_model: rules/R004.md
+          - R005 header_aware without anchors: rules/R005.md
+          - R006 large source no override: rules/R006.md
