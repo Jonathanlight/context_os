@@ -65,6 +65,7 @@ nav:
   - Getting started: getting-started.md
   - Editor integration: editor.md
   - Live evaluation: eval.md
+  - Releasing: release.md
   - Specs:
       - Vision: specs/VISION.md
       - Spec: specs/SPEC.md

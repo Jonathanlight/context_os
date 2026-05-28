@@ -1,5 +1,22 @@
 name: Release
 
+# Triggered by pushing a ``v*`` tag. Two paths to publishing on PyPI
+# are supported — pick **one** at setup time per the docs/release.md
+# checklist:
+#
+# 1. **API token (faster setup, slightly weaker security)**.
+#    Create a PyPI project + token, store as ``PYPI_API_TOKEN`` repo
+#    secret. The action below uses ``password`` and ignores OIDC.
+#
+# 2. **Trusted publishing (OIDC, recommended once set up)**.
+#    Configure a Trusted Publisher on PyPI pointing at
+#    ``Jonathanlight/context_os`` / workflow ``release.yml`` /
+#    environment ``pypi``. Leave the ``PYPI_API_TOKEN`` secret unset;
+#    the action falls through to OIDC.
+#
+# The "Detect publish mode" step below prints which path will run so
+# operators can confirm the setup before the actual publish.
+
 on:
   push:
     tags:
@@ -7,7 +24,7 @@ on:
 
 permissions:
   contents: write
-  id-token: write
+  id-token: write  # required for the OIDC trusted-publishing path
 
 jobs:
   build-and-publish:
@@ -41,9 +58,22 @@ jobs:
             exit 1
           fi
 
+      - name: Detect publish mode
+        env:
+          HAS_TOKEN: ${{ secrets.PYPI_API_TOKEN != '' }}
+        run: |
+          if [ "$HAS_TOKEN" = "true" ]; then
+            echo "::notice ::Publishing via API token (PYPI_API_TOKEN secret)."
+          else
+            echo "::notice ::Publishing via trusted publishing (OIDC). Requires PyPI-side configuration."
+          fi
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
+          # When the secret is empty (the OIDC path), pypa/gh-action-pypi-publish
+          # ignores the empty string and falls through to trusted publishing.
+          # When the secret carries a token, it takes precedence.
           password: ${{ secrets.PYPI_API_TOKEN }}
 
       - name: Create GitHub Release
