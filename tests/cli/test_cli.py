@@ -254,6 +254,32 @@ class TestCompileFlatTargets:
         assert "## Rules" in result.stdout
 
 
+class TestAudit:
+    def test_audit_empty_repo(self, tmp_path: Path) -> None:
+        result = runner.invoke(app, ["audit", str(tmp_path)])
+        assert result.exit_code == 0
+        assert "no recognized agent files found" in result.stdout
+
+    def test_audit_finds_claude_md(self, tmp_path: Path) -> None:
+        (tmp_path / "CLAUDE.md").write_text("# Sample\n\n## Rules\n\n- Use type hints.\n")
+        result = runner.invoke(app, ["audit", str(tmp_path)])
+        assert result.exit_code == 0
+        assert "CLAUDE.md" in result.stdout
+        assert "summary:" in result.stdout
+
+    def test_audit_json_output(self, tmp_path: Path) -> None:
+        (tmp_path / "CLAUDE.md").write_text("# Sample\n\n## Rules\n\n- Use type hints.\n")
+        result = runner.invoke(app, ["audit", str(tmp_path), "--json"])
+        assert result.exit_code == 0
+        payload = json.loads(result.stdout)
+        assert payload["total_count"] >= 0
+        assert "per_file" in payload
+
+    def test_audit_missing_root_errors(self, tmp_path: Path) -> None:
+        result = runner.invoke(app, ["audit", str(tmp_path / "missing")])
+        assert result.exit_code != 0
+
+
 class TestLint:
     def test_clean_ctx_reports_no_diagnostics(self, tmp_path: Path) -> None:
         ctx = _write_ctx(tmp_path)

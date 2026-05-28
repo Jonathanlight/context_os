@@ -27,6 +27,12 @@ import typer
 from contextos import __version__
 from contextos.analyzers import lint_document
 from contextos.ast.document import Document
+from contextos.audit import (
+    audit_project,
+    render_audit_cli,
+    render_audit_json,
+    scan_repo,
+)
 from contextos.diagnostics import render_cli_many, render_json_many
 from contextos.emitters import (
     emit_claude_markdown,
@@ -172,6 +178,46 @@ def lint(
         typer.echo(render_cli_many(bag, color=not no_color))
 
     raise typer.Exit(code=1 if bag.has_errors() else 0)
+
+
+AuditRoot = Annotated[
+    Path,
+    typer.Argument(
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        readable=True,
+        help="Repository root to scan recursively for agent context files.",
+    ),
+]
+AuditJson = Annotated[bool, typer.Option("--json", help="Emit machine-readable JSON.")]
+AuditNoColor = Annotated[
+    bool, typer.Option("--no-color", help="Disable ANSI colors in CLI output.")
+]
+
+
+@app.command()
+def audit(
+    root: AuditRoot,
+    json_output: AuditJson = False,
+    no_color: AuditNoColor = False,
+) -> None:
+    """Walk a repo, parse every recognized agent file, run all analyzers.
+
+    Reports per-file diagnostics and cross-artifact rules (XA*** today).
+    Files matching a recognized agent target but without a parser yet
+    (cursor / cline / windsurf / copilot) are listed under "Skipped".
+    Exit code 1 if any error-severity diagnostic fires.
+    """
+    project = scan_repo(root)
+    report = audit_project(project)
+
+    if json_output:
+        typer.echo(render_audit_json(report, indent=2))
+    else:
+        typer.echo(render_audit_cli(report, color=not no_color))
+
+    raise typer.Exit(code=1 if report.has_errors() else 0)
 
 
 _COMPILE_TARGET_HELP = f"Output target. Supported: {', '.join(_COMPILE_TARGETS)}."
