@@ -163,10 +163,10 @@ target coverage:
 
 ## Status
 
-🚀 **v2.1.0 shipped.** The full agent + skill + RAG trio, plus
-editor integration: LSP server, VSCode extension, and a composite
-GitHub Action. 27 lint rules across seven categories. See the
-[roadmap](docs/specs/ROADMAP.md) for what comes next.
+🎯 **v3.0.0 shipped.** Structural validation + functional evaluation +
+editor integration. The full toolchain: lint, compile, audit, run
+live evals against Anthropic / OpenAI, gate CI on regressions. 27 lint
+rules. See the [roadmap](docs/specs/ROADMAP.md) for what comes next.
 
 | Phase | What                                                          | Status     |
 |-------|---------------------------------------------------------------|------------|
@@ -177,7 +177,8 @@ GitHub Action. 27 lint rules across seven categories. See the
 | 5     | Anthropic Skills (`SKILL.md`) + 6 skill rules                  | ✅ shipped |
 | 6     | RAG corpora + 6 RAG rules + v2.0 launch                        | ✅ shipped |
 | 7A    | LSP server + VSCode extension + GitHub Action + v2.1 launch    | ✅ shipped |
-| 7B    | Live evaluation (Skills routing + RAG retrieval) + v3.0 launch | ⏳ planned |
+| 7B    | Live evaluation (Skills routing + RAG retrieval) + v3.0 launch | ✅ shipped |
+| 8+    | Multi-provider Skills, embedding helpers, HTML reports, …      | ⏳ planned |
 
 ## Supported targets
 
@@ -205,6 +206,8 @@ own walker.
 | `ctx audit`   | Walk a repo, lint every file, run cross-artifact rules |
 | `ctx stats`   | Aggregate corpus-wide statistics from an audit        |
 | `ctx lsp`     | Run the language server over stdio (requires `[lsp]` extras) |
+| `ctx eval`    | Run a `.eval.toml` against a real or mock provider (requires `[eval]` extras) |
+| `ctx eval-diff` | Compare two `ctx eval --json` outputs; exit 1 on regression |
 | `ctx --version` | Print version                                       |
 
 Every command has `--json` for machine-readable output and exits 1 only
@@ -232,6 +235,29 @@ pipx install context-os[lsp]
 The 27 lint rules, completion, hover, and quick-fix code actions
 surface identically in every shape — the editor is just an alternate
 window onto the same Python core.
+
+## Live evaluation
+
+Phase 7B adds **functional** evaluation alongside the structural
+lint. Write a `.eval.toml` listing prompts + expected skills (or
+queries + expected sources), run it against real LLMs / embeddings,
+gate CI on regressions:
+
+```bash
+pipx install context-os[eval]
+ctx eval skills.eval.toml --dry-run             # smoke, no API calls
+ctx eval skills.eval.toml --skills-dir skills/  # real Anthropic run
+ctx eval-diff baseline.json current.json        # exit 1 on regression
+```
+
+- **Skills routing** via the Anthropic Messages API tool-use feature
+  (`ANTHROPIC_API_KEY`).
+- **RAG retrieval** via in-process cosine over your pre-indexed
+  chunks (`OPENAI_API_KEY` for query embeddings; BYO embedding for
+  other vendors via the Python API).
+- **Mock providers** drive every test in CI without spending tokens.
+
+See [`docs/eval.md`](docs/eval.md) for the full workflow.
 
 ## Docs
 
