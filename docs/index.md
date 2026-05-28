@@ -60,8 +60,9 @@ repo audit, corpus stats, and this docs site — are all live. See the
 - `copilot` → `.github/copilot-instructions.md` (emit only)
 - `cline` → `.clinerules` (emit only)
 - `windsurf` → `.windsurfrules` (emit only)
+- `anthropic_skill` → `SKILL.md` (parse + emit + lint, Phase 5)
 
-Skill (`SKILL.md`) and RAG support land in Phase 5 and Phase 6 respectively.
+RAG support lands in Phase 6.
 
 ## License
 

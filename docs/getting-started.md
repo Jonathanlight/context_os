@@ -154,11 +154,67 @@ You get:
 
 Useful when you want to survey a fleet of projects at a glance.
 
+## Lint a SKILL.md
+
+ContextOS understands Anthropic-style skills too. A `SKILL.md` lives at
+`skills/<name>/SKILL.md` with YAML frontmatter for the trigger
+metadata and a Markdown body for documentation:
+
+```markdown
+---
+name: pdf-extract
+title: PDF invoice extraction
+description: |
+  Extracts structured invoice data from PDF documents. Triggers when
+  the user uploads a `.pdf` or asks to parse one.
+example_invocation: Extract the line items from this invoice.pdf
+trigger_keywords:
+  - facture
+files:
+  - scripts/extract.py
+---
+
+# PDF invoice extraction
+
+When invoked, this skill ...
+```
+
+Six dedicated lint rules (`S001`–`S006`) cover the failure modes
+specific to skills — descriptions without trigger phrasing, missing
+`example_invocation`, body H1 drift, redundant `trigger_keywords`:
+
+```bash
+ctx lint skills/pdf-extract/SKILL.md
+```
+
+`ctx audit .` walks every `SKILL.md` recursively, so the rules fire
+at the repo level alongside the agent rules. Skills show up under
+`anthropic_skill` in `ctx stats . target_coverage`.
+
+You can also compile a skill from a `.ctx` source:
+
+```toml
+# skill.ctx
+project = "PdfExtract"
+artifacts = ["skills"]
+
+[[skill]]
+name = "pdf-extract"
+title = "PDF invoice extraction"
+description = "Extracts PDFs. Triggers when the user uploads an invoice."
+example_invocation = "Extract the line items from this invoice.pdf"
+```
+
+```bash
+ctx compile skill.ctx --target anthropic_skill --output-dir .
+# wrote ./SKILL.md
+```
+
 ## What's next?
 
 - Read the [Vision](specs/VISION.md) and [Spec](specs/SPEC.md) docs to
   understand the architecture.
 - Browse the [rules catalog](rules/index.md) to see what each diagnostic
   catches.
-- Check the [Roadmap](specs/ROADMAP.md) for what's coming in Phase 5 (Skills)
-  and Phase 6 (RAG).
+- Check the [Roadmap](specs/ROADMAP.md) for what's coming in Phase 6
+  (RAG corpora).

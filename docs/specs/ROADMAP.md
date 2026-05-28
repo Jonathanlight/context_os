@@ -70,30 +70,57 @@ Public corpus study (40+ artifacts), docs site, launch posts.
 **The HN pitch stays focused on context files.** Skills and RAG are
 mentioned as "coming next" without diluting attention.
 
-## Phase 5 — Skills (Weeks 14–17, NEW)
+## Phase 5 — Skills (✅ shipped)
 
-**Goal:** `ctx lint skill.md`, `ctx compile skill.ctx --target anthropic_skills`,
-`ctx audit skills/`.
+**Goal achieved:** `ctx parse SKILL.md`, `ctx lint SKILL.md`,
+`ctx compile skill.ctx --target anthropic_skill`, `ctx audit .`
+walks `SKILL.md` files, `ctx stats .` reports `anthropic_skill`
+coverage.
 
-Deliverables:
+**Shipped (PRs #44 – #49):**
 
-- AST extension: `Skill` Pydantic models
-- `.ctx` parser extended: `[[skill]]` section validated
-- `SKILL.md` parser: mistletoe + YAML frontmatter; "Files" section detection; "Example invocation" detection; 25+ real Skills fixtures
-- Skills analyzer: S001–S010 (TF-IDF for S006 overlap, tiktoken for lengths)
-- `anthropic_skills` emitter: creates `skills/<name>/`, generates `SKILL.md` with frontmatter, copies referenced files, verifies existence before copy
-- CLI: `ctx lint-skill <path>`, `ctx compile <file.ctx> --target anthropic_skills`, `ctx audit-skills <dir>`
-- 3 templates (data-extraction, code-generation, document-conversion)
-- Docs: one page per S*** rule, emitter page, "Create a skill with ContextOS" tutorial
-- Release `v1.1.0`
-- Blog post + share on Anthropic Discord, r/ClaudeAI
+- AST: `SkillDocument` Pydantic model mirroring SPEC §1.3 verbatim;
+  `Document.type` widened to `Literal["agent", "skill"]` with a
+  family-slot validator that rejects cross-family payloads (PR #44).
+- `.ctx` parser extended: `[[skill]]` blocks validated;
+  `SUPPORTED_ARTIFACTS` widened to `{'context', 'skills'}`; `dump_ctx_string`
+  honors `type='skill'` (PR #48).
+- `SKILL.md` parser: ruamel.yaml frontmatter + mistletoe body;
+  title fallback from body H1 for Anthropic-flavored files; verbatim
+  body preservation; `ContextOSParseError` with `file:line:column` +
+  suggestions on every failure mode (PR #45).
+- `SKILL.md` emitter: ruamel `typ='rt'` for key-order preservation;
+  byte-stability + idempotence contracts; 200-example hypothesis
+  round-trip property test (PR #46).
+- Skill analyzers S001–S006:
+  - **Description quality** — S001 missing trigger, S002 too short,
+    S003 nearing hard cap.
+  - **Body / metadata coherence** — S004 missing `example_invocation`,
+    S005 body H1 missing or mismatched, S006 redundant
+    `trigger_keywords` (PR #47).
+- CLI integration across `parse`, `lint`, `compile`, `audit`, `stats`
+  (PR #48).
+- Docs: one page per S*** rule, getting-started skill example,
+  `anthropic_skill` target in the supported-targets table (this PR).
 
-**Anti-goals:** no live skill evaluation (Phase 7+), no Cursor commands / GPT
-custom instructions support (Phase 7+).
+**Deferred to a follow-up phase:**
 
-**DoD:** full pipeline on 10 real skills (parse → lint → rewrite); round-trip
-property test on skills; self-audit of the ContextOS repo produces ≥ 0
-critical issues.
+- 25+ real Skills fixtures (currently 3 fixtures + 200 hypothesis
+  examples).
+- TF-IDF for S006 overlap (current heuristic is lexical-only).
+- tiktoken-aware length warnings (S003 uses character counts).
+- 3 ready-made skill templates (data-extraction, code-generation,
+  document-conversion).
+- Skill cross-artifact rules (audit's XA001 only operates on agent
+  files today).
+
+**Anti-goals (unchanged):** no live skill evaluation, no Cursor
+commands / GPT custom instructions support.
+
+**DoD met:** full pipeline (parse → lint → emit → re-parse) verified
+on 3 fixtures + 200 hypothesis-generated skills; self-audit of the
+ContextOS repo produces zero S-rule errors; PRs #44–#49 merge cleanly
+to develop.
 
 ## Phase 6 — RAG (Weeks 18–21, NEW)
 
