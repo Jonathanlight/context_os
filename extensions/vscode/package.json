@@ -1,0 +1,95 @@
+{
+  "name": "contextos",
+  "displayName": "ContextOS",
+  "description": "Lint, autocomplete, and authoring for ContextOS .ctx and SKILL.md files. Wraps the ctx lsp server.",
+  "version": "0.1.0",
+  "publisher": "jonathanlight",
+  "license": "MIT",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jonathanlight/context_os.git",
+    "directory": "extensions/vscode"
+  },
+  "homepage": "https://contextos.dev",
+  "bugs": "https://github.com/Jonathanlight/context_os/issues",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Linters",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "contextos",
+    "ctx",
+    "claude",
+    "skill",
+    "rag",
+    "agent",
+    "llm",
+    "linter"
+  ],
+  "activationEvents": [
+    "onLanguage:contextos-ctx",
+    "workspaceContains:**/*.ctx",
+    "workspaceContains:**/SKILL.md"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "contextos-ctx",
+        "aliases": [
+          "ContextOS",
+          "ctx"
+        ],
+        "extensions": [
+          ".ctx"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "configuration": {
+      "title": "ContextOS",
+      "properties": {
+        "contextos.command": {
+          "type": "string",
+          "default": "ctx",
+          "description": "Path to the ctx CLI executable. Defaults to whatever resolves on PATH."
+        },
+        "contextos.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Trace LSP traffic between editor and ctx lsp server. Logs go to the ContextOS output channel."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "contextos.restartServer",
+        "title": "ContextOS: Restart language server"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "watch": "tsc -p . --watch",
+    "package": "vsce package",
+    "vscode:prepublish": "tsc -p ."
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.80.0",
+    "@vscode/vsce": "^3.0.0",
+    "typescript": "^5.4.0"
+  }
+}
