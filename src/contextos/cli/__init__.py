@@ -680,3 +680,95 @@ def _run_rag_eval(
         embed = build_embed(rag_embed_model)
         provider = EmbeddingRagProvider(chunks=chunks, embed_query=embed)
     return runner_cls(provider).run(suite)
+
+
+# --- ctx eval-diff ---------------------------------------------------------
+
+_DIFF_BASELINE_HELP = "Baseline eval result JSON (typically committed alongside the suite)."
+_DIFF_CURRENT_HELP = "Current eval result JSON (from a fresh ctx eval --json --output run)."
+_DIFF_FAIL_ON_NEW_HELP = (
+    "Exit non-zero when the current run added cases that fail. Default is "
+    "'false' so newly-introduced failing cases do not block a PR until a "
+    "second run validates the regression — but real regressions "
+    "(case passed in baseline, fails now) always block regardless."
+)
+
+EdiffBaseline = Annotated[
+    Path,
+    typer.Argument(exists=True, dir_okay=False, readable=True, help=_DIFF_BASELINE_HELP),
+]
+EdiffCurrent = Annotated[
+    Path,
+    typer.Argument(exists=True, dir_okay=False, readable=True, help=_DIFF_CURRENT_HELP),
+]
+EdiffJson = Annotated[
+    bool,
+    typer.Option("--json", help="Emit JSON instead of human-readable text."),
+]
+EdiffOutput = Annotated[
+    Path | None,
+    typer.Option("--output", "-o", help="Write the rendered output to this path."),
+]
+EdiffFailOnNew = Annotated[
+    bool,
+    typer.Option("--fail-on-new-failure", help=_DIFF_FAIL_ON_NEW_HELP),
+]
+
+
+@app.command(name="eval-diff")
+def eval_diff_cmd(
+    baseline: EdiffBaseline,
+    current: EdiffCurrent,
+    json_output: EdiffJson = False,
+    output: EdiffOutput = None,
+    fail_on_new_failure: EdiffFailOnNew = False,
+) -> None:
+    """Compare two ``ctx eval --json`` outputs to detect regressions.
+
+    Cases are matched by ``case_name`` between baseline and current.
+    Each transition is classified into one of five buckets:
+
+    - **regression** — was passing in baseline, fails now.
+    - **improvement** — was failing in baseline, passes now.
+    - **new_failure** — case is new in the current run + failing.
+    - **new_pass** — case is new in the current run + passing.
+    - **removed** — case was in baseline, gone from current.
+
+    Exit code semantics:
+
+    - 0 — no regressions (and no new failures if --fail-on-new-failure).
+    - 1 — at least one regression, or a new failure when the flag is set.
+
+    Typical CI flow:
+
+    .. code-block:: yaml
+
+       - run: ctx eval suite.eval.toml --json --output current.json
+       - run: ctx eval-diff baseline.json current.json
+    """
+    from contextos.eval.diff import (  # noqa: PLC0415 — keep heavy imports near use
+        compute_eval_diff,
+        render_diff_cli,
+        render_diff_json,
+    )
+    from contextos.eval.results import EvalRunResult  # noqa: PLC0415
+
+    try:
+        baseline_run = EvalRunResult.model_validate_json(
+            baseline.read_text(encoding="utf-8")
+        )
+        current_run = EvalRunResult.model_validate_json(
+            current.read_text(encoding="utf-8")
+        )
+    except Exception as exc:
+        typer.echo(f"failed to parse eval result JSON: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    diff = compute_eval_diff(baseline_run, current_run)
+    rendered = render_diff_json(diff) if json_output else render_diff_cli(diff)
+    _emit_payload(rendered, output=output)
+
+    if diff.has_regressions():
+        raise typer.Exit(code=1)
+    if fail_on_new_failure and diff.has_new_failures():
+        raise typer.Exit(code=1)
