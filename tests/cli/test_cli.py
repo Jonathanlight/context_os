@@ -254,6 +254,38 @@ class TestCompileFlatTargets:
         assert "## Rules" in result.stdout
 
 
+class TestDiff:
+    def test_identical_files_show_no_changes(self, tmp_path: Path) -> None:
+        a = _write_ctx(tmp_path)
+        result = runner.invoke(app, ["diff", str(a), str(a)])
+        assert result.exit_code == 0
+        assert "no changes" in result.stdout
+
+    def test_different_projects(self, tmp_path: Path) -> None:
+        a = _write_ctx(tmp_path)
+        b = tmp_path / "other.ctx"
+        b.write_text(_MINIMAL_CTX.replace('"CLISample"', '"OtherProject"'))
+        result = runner.invoke(app, ["diff", str(a), str(b)])
+        assert result.exit_code == 0
+        assert "project:" in result.stdout
+        assert "CLISample" in result.stdout
+        assert "OtherProject" in result.stdout
+
+    def test_json_output(self, tmp_path: Path) -> None:
+        a = _write_ctx(tmp_path)
+        b = tmp_path / "other.ctx"
+        b.write_text(_MINIMAL_CTX.replace('"CLISample"', '"OtherProject"'))
+        result = runner.invoke(app, ["diff", str(a), str(b), "--json"])
+        assert result.exit_code == 0
+        payload = json.loads(result.stdout)
+        assert payload["project_changed"] == ["CLISample", "OtherProject"]
+
+    def test_missing_file_errors(self, tmp_path: Path) -> None:
+        a = _write_ctx(tmp_path)
+        result = runner.invoke(app, ["diff", str(a), str(tmp_path / "missing.ctx")])
+        assert result.exit_code != 0
+
+
 class TestLint:
     def test_clean_ctx_reports_no_diagnostics(self, tmp_path: Path) -> None:
         ctx = _write_ctx(tmp_path)
