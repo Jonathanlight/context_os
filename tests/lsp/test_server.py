@@ -251,3 +251,39 @@ class TestHoverWiring:
             )
         )
         assert result is None
+
+
+class TestCodeActionWiring:
+    """The codeAction handler should compose actions from context.diagnostics."""
+
+    def test_code_action_emits_info_quickfix_for_suggestion(
+        self,
+        server_with_capture: tuple[Any, list[lsp.PublishDiagnosticsParams]],
+    ) -> None:
+        server, _ = server_with_capture
+        _seed_document(server, "file:///tmp/x.ctx", "")
+        handler = _handler(server, lsp.TEXT_DOCUMENT_CODE_ACTION)
+        diag = lsp.Diagnostic(
+            range=lsp.Range(
+                start=lsp.Position(line=0, character=0),
+                end=lsp.Position(line=0, character=0),
+            ),
+            message="vague directive\n\nhelp: rephrase with a measurable criterion",
+            severity=lsp.DiagnosticSeverity.Warning,
+            code="A001",
+            source="contextos",
+        )
+        result = handler(
+            lsp.CodeActionParams(
+                text_document=lsp.TextDocumentIdentifier(uri="file:///tmp/x.ctx"),
+                range=lsp.Range(
+                    start=lsp.Position(line=0, character=0),
+                    end=lsp.Position(line=0, character=0),
+                ),
+                context=lsp.CodeActionContext(diagnostics=[diag]),
+            )
+        )
+        assert len(result) == 1
+        assert result[0].kind == lsp.CodeActionKind.QuickFix
+        assert "A001" in result[0].title
+        assert result[0].edit is None
