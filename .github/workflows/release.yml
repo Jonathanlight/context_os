@@ -51,14 +51,26 @@ jobs:
       - name: Verify package version matches the tag
         env:
           GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
         run: |
           set -euo pipefail
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
           python -m pip install -e .
           PKG_VERSION=$(python -c "import contextos; print(contextos.__version__)")
-          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
-            echo "tag $TAG_VERSION does not match package $PKG_VERSION"
-            exit 1
+          # On tag pushes (`github.ref_type == 'tag'`) we strictly verify
+          # that the tag name matches the package version. On manual
+          # workflow_dispatch from a branch we skip the strict check and
+          # just publish whatever the wheel carries — the operator
+          # initiated the run knowingly and the next "Detect publish
+          # mode" step will name what's about to ship.
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            TAG_VERSION="${GITHUB_REF_NAME#v}"
+            if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+              echo "tag $TAG_VERSION does not match package $PKG_VERSION"
+              exit 1
+            fi
+            echo "::notice ::Publishing tag $GITHUB_REF_NAME as package version $PKG_VERSION."
+          else
+            echo "::notice ::Manual dispatch from $GITHUB_REF_NAME — publishing package version $PKG_VERSION (no tag check)."
           fi
 
       - name: Detect publish mode

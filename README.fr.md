@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="logo.png" alt="ContextOS — Le système d'exploitation du contexte AI" width="420">
+<img src="https://raw.githubusercontent.com/Jonathanlight/context_os/develop/logo.png" alt="ContextOS — Le système d'exploitation du contexte AI" width="420">
 
 # ContextOS
 
