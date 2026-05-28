@@ -100,6 +100,8 @@ def _target_coverage(report: AuditReport) -> dict[str, int]:
             coverage["claude_code"] += 1
         elif path.endswith("AGENTS.md"):
             coverage["codex"] += 1
+        elif path.endswith("SKILL.md"):
+            coverage["anthropic_skill"] += 1
         else:
             coverage["other"] += 1
     for entry in report.skipped:

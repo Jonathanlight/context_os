@@ -21,7 +21,7 @@ def render_audit_cli(report: AuditReport, *, color: bool = False) -> str:
     """
     parts: list[str] = [f"audit {report.repo_path}"]
 
-    if not report.per_file and not report.cross_artifact:
+    if not report.per_file and not report.cross_artifact and not report.skipped:
         parts.append("")
         parts.append("no recognized agent files found")
         return "\n".join(parts).rstrip() + "\n"
