@@ -39,12 +39,13 @@ from contextos.ast.agent import (
 )
 from contextos.ast.common import Position, Severity
 from contextos.ast.document import Document
+from contextos.ast.skill import SkillDocument
 
-SUPPORTED_ARTIFACTS = frozenset({"context"})
+SUPPORTED_ARTIFACTS = frozenset({"context", "skills"})
 """Artifact families this parser understands.
 
-Phase 5 will add ``"skills"``, Phase 6 ``"rag"``. Until then we fail loudly
-rather than silently dropping unsupported sections.
+Phase 5.5 added ``"skills"`` (a ``.ctx`` source may now declare a
+single ``[[skill]]`` block). Phase 6 will widen this to ``"rag"``.
 """
 
 KNOWN_ROOT_FIELDS = frozenset(
@@ -62,6 +63,7 @@ KNOWN_ROOT_FIELDS = frozenset(
         "tools",
         "rules",
         "forbidden_patterns",
+        "skill",
     }
 )
 """Every root-level key a ``.ctx`` source may carry in the context family.
@@ -160,9 +162,16 @@ def parse_ctx_string(content: str, source: str = _STRING_SOURCE) -> Document:
             f"unsupported artifact(s): {unsupported}",
             source=source,
             suggestion=(
-                "only 'context' is supported in this release; "
-                "'skills' lands in Phase 5, 'rag' in Phase 6"
+                "supported artifacts in this release: 'context', 'skills'; "
+                "'rag' lands in Phase 6"
             ),
+        )
+
+    if "skills" in artifacts_raw:
+        return _build_skill_root(
+            data,
+            project=project,
+            source=source,
         )
 
     rule_lines = _scan_rule_positions(content)
@@ -177,6 +186,59 @@ def parse_ctx_string(content: str, source: str = _STRING_SOURCE) -> Document:
             authors=_string_list(data.get("authors", []), field="authors", source=source),
             version=str(data.get("version", "0.1.0")),
             agent=agent,
+        )
+    except ValidationError as exc:
+        raise ContextOSParseError(f"document failed validation: {exc}", source=source) from exc
+
+
+def _build_skill_root(
+    data: dict[str, Any],
+    *,
+    project: str,
+    source: str,
+) -> Document:
+    """Build a Document(type='skill') from a ``.ctx`` carrying ``[[skill]]``.
+
+    SPEC §1.3 prescribes ``[[skill]]`` as an array-of-tables; Phase 5.5
+    supports a single block per source file. Multi-skill sources will
+    arrive with the ``multi`` artifact family — for now they fail loudly.
+    """
+    skill_blocks = data.get("skill")
+    if not isinstance(skill_blocks, list) or not skill_blocks:
+        raise ContextOSParseError(
+            "artifacts=['skills'] requires at least one [[skill]] block",
+            source=source,
+            suggestion="add a [[skill]] table with name / title / description",
+        )
+    if len(skill_blocks) > 1:
+        raise ContextOSParseError(
+            "multiple [[skill]] blocks in one .ctx file are not yet supported",
+            source=source,
+            suggestion="split each skill into its own .ctx file for now",
+        )
+    block = skill_blocks[0]
+    if not isinstance(block, dict):
+        raise ContextOSParseError(
+            "[[skill]] block must be a TOML table",
+            source=source,
+        )
+    try:
+        skill = SkillDocument.model_validate(block)
+    except ValidationError as exc:
+        raise ContextOSParseError(
+            f"[[skill]] failed validation: {exc}",
+            source=source,
+        ) from exc
+
+    try:
+        return Document(
+            project=project,
+            ctx_version=str(data.get("ctx_version", "0.3")),
+            type="skill",
+            languages=_string_list(data.get("languages", []), field="languages", source=source),
+            authors=_string_list(data.get("authors", []), field="authors", source=source),
+            version=str(data.get("version", "0.1.0")),
+            skill=skill,
         )
     except ValidationError as exc:
         raise ContextOSParseError(f"document failed validation: {exc}", source=source) from exc
@@ -424,7 +486,7 @@ def dump_ctx_string(doc: Document) -> str:
     td["project"] = doc.project
     if doc.ctx_version != "0.3":
         td["ctx_version"] = doc.ctx_version
-    td["artifacts"] = ["context"]
+    td["artifacts"] = ["skills"] if doc.type == "skill" else ["context"]
     if doc.languages:
         td["languages"] = list(doc.languages)
     if doc.authors:
@@ -432,10 +494,23 @@ def dump_ctx_string(doc: Document) -> str:
     if doc.version != "0.1.0":
         td["version"] = doc.version
 
-    agent = doc.agent
-    if agent is None:
+    if doc.type == "skill" and doc.skill is not None:
+        td["skill"] = _dump_skill_aot(doc.skill)
         return tomlkit.dumps(td)
 
+    if doc.agent is not None:
+        _dump_agent_into(td, doc.agent)
+
+    return tomlkit.dumps(td)
+
+
+def _dump_agent_into(td: Any, agent: AgentDocument) -> None:
+    """Populate ``td`` with the AgentDocument's optional sections.
+
+    Extracted out of :func:`dump_ctx_string` to keep that function's
+    branch count under the ruff PLR0912 ceiling; the conditional
+    structure here mirrors the skill counterpart for symmetry.
+    """
     if agent.forbidden_patterns:
         td["forbidden_patterns"] = list(agent.forbidden_patterns)
 
@@ -476,7 +551,37 @@ def dump_ctx_string(doc: Document) -> str:
             rules_aot.append(_dump_rule(rule))
         td["rules"] = rules_aot
 
-    return tomlkit.dumps(td)
+
+def _dump_skill_aot(skill: SkillDocument) -> Any:
+    """Serialize a :class:`SkillDocument` as a tomlkit array-of-tables.
+
+    SPEC §1.3 prescribes ``[[skill]]``; we emit the single entry as a
+    one-element AoT so the canonical form (a top-level array) matches
+    what the parser expects on the round-trip.
+    """
+    aot = tomlkit.aot()
+    table = tomlkit.table()
+    table["name"] = skill.name
+    table["title"] = skill.title
+    table["description"] = skill.description
+    if skill.trigger_keywords:
+        table["trigger_keywords"] = list(skill.trigger_keywords)
+    if skill.applies_to:
+        table["applies_to"] = list(skill.applies_to)
+    if skill.languages_supported:
+        table["languages_supported"] = list(skill.languages_supported)
+    if skill.files:
+        table["files"] = list(skill.files)
+    if skill.required_runtime is not None:
+        table["required_runtime"] = skill.required_runtime
+    if skill.example_invocation is not None:
+        table["example_invocation"] = skill.example_invocation
+    if skill.expected_output_format is not None:
+        table["expected_output_format"] = skill.expected_output_format
+    if skill.tags:
+        table["tags"] = list(skill.tags)
+    aot.append(table)
+    return aot
 
 
 def _dump_optional_table(fields: dict[str, Any]) -> Any:

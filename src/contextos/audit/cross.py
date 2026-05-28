@@ -49,11 +49,21 @@ class AuditReport(BaseModel):
 
 
 def audit_project(project: ProjectInferred) -> AuditReport:
-    """Run every analyzer on every agent file + cross-artifact rules."""
+    """Run every analyzer on every parseable file + cross-artifact rules.
+
+    Iterates both ``agent_files`` and ``skill_files`` so all S-coded
+    diagnostics surface alongside the A/C/F/K/P/X ones. Cross-artifact
+    rules currently only operate on the agent file set (XA001 detects
+    rule-id collisions between agent files); skill cross-rules will
+    arrive when more than one skill-side dimension warrants them.
+    """
     per_file: dict[str, list[Diagnostic]] = {}
     for entry in project.agent_files:
         bag = lint_document(entry.document, source=str(entry.path))
         per_file[str(entry.path)] = bag.sorted()
+    for skill_entry in project.skill_files:
+        bag = lint_document(skill_entry.document, source=str(skill_entry.path))
+        per_file[str(skill_entry.path)] = bag.sorted()
 
     cross_artifact = list(_check_xa001(project.agent_files))
 

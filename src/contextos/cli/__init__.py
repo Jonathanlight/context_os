@@ -19,6 +19,7 @@ shell scripts can chain ``ctx parse foo.ctx && …`` reliably.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated
 
@@ -41,6 +42,7 @@ from contextos.emitters import (
     emit_codex_markdown,
     emit_copilot_instructions,
     emit_cursor_mdc,
+    emit_skill_markdown,
     emit_windsurfrules,
 )
 from contextos.parsers import (
@@ -49,6 +51,7 @@ from contextos.parsers import (
     dump_ctx_string,
     parse_ctx_file,
     parse_markdown_file,
+    parse_skill_file,
 )
 from contextos.stats import compute_stats, render_stats_cli, render_stats_json
 
@@ -59,9 +62,9 @@ app = typer.Typer(
     add_completion=False,
 )
 
-# Compilation targets supported by `ctx compile`. Phase 3 wires the full
-# agent fleet: codex (AGENTS.md), cursor (.cursor/rules/*.mdc), and the
-# three flat-Markdown targets copilot / cline / windsurf.
+# Compilation targets supported by `ctx compile`. Phase 3 wired the agent
+# fleet (claude_code / codex / cursor / copilot / cline / windsurf);
+# Phase 5.5 adds the anthropic_skill target for SKILL.md.
 _COMPILE_TARGETS = (
     "claude_code",
     "codex",
@@ -69,6 +72,7 @@ _COMPILE_TARGETS = (
     "copilot",
     "cline",
     "windsurf",
+    "anthropic_skill",
 )
 _TARGET_FILENAMES: dict[str, str] = {
     "claude_code": "CLAUDE.md",
@@ -77,7 +81,18 @@ _TARGET_FILENAMES: dict[str, str] = {
     "copilot": ".github/copilot-instructions.md",
     "cline": ".clinerules",
     "windsurf": ".windsurfrules",
+    "anthropic_skill": "SKILL.md",
 }
+
+_SKILL_TARGET = "anthropic_skill"
+"""Target name used by parse/lint/compile when the source is a SKILL.md.
+
+Kept as a constant so the CLI surface, the audit scanner, and the
+stats aggregator all agree on the wire-name and the user-facing
+``--target`` value match. The string mirrors SPEC.md §1.3's
+``anthropic_skills`` target id (singular here because each invocation
+operates on a single SKILL.md, not a directory of skills).
+"""
 
 
 def _version_callback(value: bool) -> None:
@@ -367,35 +382,51 @@ def compile_cmd(
 
 
 def _dispatch_parse(file: Path, *, target: str | None) -> Document:
-    """Pick the right parser based on file extension."""
+    """Pick the right parser based on file extension and explicit target.
+
+    Dispatch order:
+
+    1. ``.ctx`` → :func:`parse_ctx_file` regardless of ``--target``.
+    2. ``--target anthropic_skill`` OR basename ``SKILL.md`` →
+       :func:`parse_skill_file`.
+    3. Otherwise an explicit ``--target`` is required for the agent
+       Markdown parser; missing ``--target`` raises a parse error with
+       the supported-target list.
+    """
     if file.suffix.lower() == ".ctx":
         return parse_ctx_file(file)
+    if target == _SKILL_TARGET or (target is None and file.name == "SKILL.md"):
+        return parse_skill_file(file)
     if target is None:
         raise ContextOSParseError(
             f"--target is required for non-.ctx sources (got {file.name})",
             source=str(file),
-            suggestion=f"add --target one of: {', '.join(SUPPORTED_TARGETS)}",
+            suggestion=(
+                f"add --target one of: {', '.join((*SUPPORTED_TARGETS, _SKILL_TARGET))}"
+            ),
         )
     return parse_markdown_file(file, target=target)
 
 
+_EMITTERS: dict[str, Callable[[Document], str]] = {
+    "claude_code": emit_claude_markdown,
+    "codex": emit_codex_markdown,
+    "cursor": emit_cursor_mdc,
+    "copilot": emit_copilot_instructions,
+    "cline": emit_clinerules,
+    "windsurf": emit_windsurfrules,
+    "anthropic_skill": emit_skill_markdown,
+}
+
+
 def _render_for_target(doc: Document, *, target: str) -> str:
     """Dispatch to the emitter for the requested target."""
-    if target == "claude_code":
-        return emit_claude_markdown(doc)
-    if target == "codex":
-        return emit_codex_markdown(doc)
-    if target == "cursor":
-        return emit_cursor_mdc(doc)
-    if target == "copilot":
-        return emit_copilot_instructions(doc)
-    if target == "cline":
-        return emit_clinerules(doc)
-    if target == "windsurf":
-        return emit_windsurfrules(doc)
-    # Guarded upstream by the _COMPILE_TARGETS check; safety net for the future.
-    msg = f"no emitter wired for target '{target}'"
-    raise RuntimeError(msg)
+    emitter = _EMITTERS.get(target)
+    if emitter is None:
+        # Guarded upstream by _COMPILE_TARGETS; safety net for the future.
+        msg = f"no emitter wired for target '{target}'"
+        raise RuntimeError(msg)
+    return emitter(doc)
 
 
 def _emit_payload(payload: str, *, output: Path | None) -> None:
