@@ -13,11 +13,13 @@ from pathlib import Path
 from contextos.audit.project import (
     AgentFile,
     ProjectInferred,
+    RagFile,
     SkillFile,
     SkippedFile,
 )
 from contextos.parsers import (
     ContextOSParseError,
+    parse_ctx_file,
     parse_markdown_file,
     parse_skill_file,
 )
@@ -50,13 +52,16 @@ _SKIP_DIRS = frozenset({".git", ".venv", "venv", "node_modules", "__pycache__", 
 def scan_repo(root: Path) -> ProjectInferred:
     """Walk ``root`` recursively and parse every recognized artifact.
 
-    Returns a :class:`ProjectInferred` carrying the three buckets the
-    audit cares about: agent files, skill files, and skipped files
-    (recognized but not parseable yet).
+    Returns a :class:`ProjectInferred` carrying four buckets the audit
+    cares about: agent files, skill files, rag files, and skipped
+    files (recognized but unparseable). ``.ctx`` files are dispatched
+    by their declared ``artifacts`` family so a corpus-level audit can
+    cover agents, skills, and RAG configs in one pass.
     """
     root = root.resolve()
     agent_files: list[AgentFile] = []
     skill_files: list[SkillFile] = []
+    rag_files: list[RagFile] = []
     skipped_files: list[SkippedFile] = []
 
     for path in _walk(root):
@@ -81,6 +86,16 @@ def scan_repo(root: Path) -> ProjectInferred:
                 skipped_files.append(skill_entry)
             continue
 
+        if path.suffix.lower() == ".ctx":
+            _route_ctx_file(
+                path,
+                agent_files=agent_files,
+                skill_files=skill_files,
+                rag_files=rag_files,
+                skipped_files=skipped_files,
+            )
+            continue
+
         skip_target = _SKIPPED_BASENAMES.get(path.name) or _SKIPPED_RELATIVE_PATHS.get(
             rel_posix
         )
@@ -97,8 +112,39 @@ def scan_repo(root: Path) -> ProjectInferred:
         repo_path=root,
         agent_files=agent_files,
         skill_files=skill_files,
+        rag_files=rag_files,
         skipped_files=skipped_files,
     )
+
+
+def _route_ctx_file(
+    path: Path,
+    *,
+    agent_files: list[AgentFile],
+    skill_files: list[SkillFile],
+    rag_files: list[RagFile],
+    skipped_files: list[SkippedFile],
+) -> None:
+    """Parse a ``.ctx`` and route it into the right bucket by family.
+
+    The ``.ctx`` parser already discriminates on ``artifacts``; we
+    just dispatch the resulting Document into the right list and rely
+    on its ``.type`` to label the target.
+    """
+    try:
+        doc = parse_ctx_file(path)
+    except ContextOSParseError as exc:
+        skipped_files.append(
+            SkippedFile(path=path, target="ctx", reason=f"parse error: {exc}")
+        )
+        return
+    match doc.type:
+        case "agent":
+            agent_files.append(AgentFile(path=path, target="ctx_agent", document=doc))
+        case "skill":
+            skill_files.append(SkillFile(path=path, target="ctx_skill", document=doc))
+        case "rag":
+            rag_files.append(RagFile(path=path, target="rag_manifest", document=doc))
 
 
 def _walk(root: Path) -> list[Path]:
