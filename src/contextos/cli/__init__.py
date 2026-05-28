@@ -27,6 +27,12 @@ import typer
 from contextos import __version__
 from contextos.analyzers import lint_document
 from contextos.ast.document import Document
+from contextos.audit import (
+    audit_project,
+    render_audit_cli,
+    render_audit_json,
+    scan_repo,
+)
 from contextos.diagnostics import render_cli_many, render_json_many
 from contextos.diff import diff_documents, render_diff_cli, render_diff_json
 from contextos.emitters import (
@@ -44,6 +50,7 @@ from contextos.parsers import (
     parse_ctx_file,
     parse_markdown_file,
 )
+from contextos.stats import compute_stats, render_stats_cli, render_stats_json
 
 app = typer.Typer(
     name="ctx",
@@ -213,6 +220,83 @@ def diff(
         typer.echo(render_diff_json(structured, indent=2))
     else:
         typer.echo(render_diff_cli(structured))
+
+
+AuditRoot = Annotated[
+    Path,
+    typer.Argument(
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        readable=True,
+        help="Repository root to scan recursively for agent context files.",
+    ),
+]
+AuditJson = Annotated[bool, typer.Option("--json", help="Emit machine-readable JSON.")]
+AuditNoColor = Annotated[
+    bool, typer.Option("--no-color", help="Disable ANSI colors in CLI output.")
+]
+
+
+@app.command()
+def audit(
+    root: AuditRoot,
+    json_output: AuditJson = False,
+    no_color: AuditNoColor = False,
+) -> None:
+    """Walk a repo, parse every recognized agent file, run all analyzers.
+
+    Reports per-file diagnostics and cross-artifact rules (XA*** today).
+    Files matching a recognized agent target but without a parser yet
+    (cursor / cline / windsurf / copilot) are listed under "Skipped".
+    Exit code 1 if any error-severity diagnostic fires.
+    """
+    project = scan_repo(root)
+    report = audit_project(project)
+
+    if json_output:
+        typer.echo(render_audit_json(report, indent=2))
+    else:
+        typer.echo(render_audit_cli(report, color=not no_color))
+
+    raise typer.Exit(code=1 if report.has_errors() else 0)
+
+
+StatsRoot = Annotated[
+    Path,
+    typer.Argument(
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        readable=True,
+        help="Repository root to scan + aggregate stats from.",
+    ),
+]
+StatsJson = Annotated[bool, typer.Option("--json", help="Emit machine-readable JSON.")]
+StatsTopN = Annotated[int, typer.Option("--top", help="Number of top diagnostic codes to surface.")]
+
+
+@app.command()
+def stats(
+    root: StatsRoot,
+    json_output: StatsJson = False,
+    top: StatsTopN = 10,
+) -> None:
+    """Aggregate corpus-wide statistics from an audit run.
+
+    Walks the repo (same scanner as ``ctx audit``), runs analyzers, then
+    rolls the result into a :class:`CorpusStats` — per-severity counts,
+    top diagnostic codes, rule counts per file, target coverage. Useful
+    for surveying a fleet of context files at a glance.
+    """
+    project = scan_repo(root)
+    report = audit_project(project)
+    summary = compute_stats(report, top_n=top)
+
+    if json_output:
+        typer.echo(render_stats_json(summary, indent=2))
+    else:
+        typer.echo(render_stats_cli(summary))
 
 
 _COMPILE_TARGET_HELP = f"Output target. Supported: {', '.join(_COMPILE_TARGETS)}."
