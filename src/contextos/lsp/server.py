@@ -35,6 +35,7 @@ from contextos import __version__
 from contextos.analyzers import lint_document
 from contextos.ast.common import Position
 from contextos.diagnostics import Diagnostic, DiagSeverity
+from contextos.lsp.code_actions import compute_code_actions
 from contextos.lsp.completion import compute_completions
 from contextos.lsp.diagnostics_adapter import to_lsp_diagnostic
 from contextos.lsp.hover import compute_hover
@@ -91,6 +92,15 @@ def build_server() -> LanguageServer:
     def _hover(params: lsp.HoverParams) -> lsp.Hover | None:
         text = server.workspace.get_text_document(params.text_document.uri).source
         return compute_hover(text, params.position)
+
+    @server.feature(
+        lsp.TEXT_DOCUMENT_CODE_ACTION,
+        lsp.CodeActionOptions(code_action_kinds=[lsp.CodeActionKind.QuickFix]),
+    )
+    def _code_action(params: lsp.CodeActionParams) -> list[lsp.CodeAction]:
+        uri = params.text_document.uri
+        text = server.workspace.get_text_document(uri).source
+        return compute_code_actions(text, list(params.context.diagnostics), uri)
 
     return server
 
