@@ -163,10 +163,11 @@ target coverage:
 
 ## Status
 
-🎯 **v3.0.0 shipped.** Structural validation + functional evaluation +
-editor integration. The full toolchain: lint, compile, audit, run
-live evals against Anthropic / OpenAI, gate CI on regressions. 27 lint
-rules. See the [roadmap](docs/specs/ROADMAP.md) for what comes next.
+📦 **v4.0.0 shipped.** Lint + evaluate + auto-fix + ship. ContextOS now
+publishes to PyPI and VSCode Marketplace via configurable release
+workflows, renders audit + eval results as self-contained HTML pages,
+and includes `ctx fix` for auto-applying four structured code-actions
+across a repo. 27 lint rules.
 
 | Phase | What                                                          | Status     |
 |-------|---------------------------------------------------------------|------------|
@@ -178,7 +179,8 @@ rules. See the [roadmap](docs/specs/ROADMAP.md) for what comes next.
 | 6     | RAG corpora + 6 RAG rules + v2.0 launch                        | ✅ shipped |
 | 7A    | LSP server + VSCode extension + GitHub Action + v2.1 launch    | ✅ shipped |
 | 7B    | Live evaluation (Skills routing + RAG retrieval) + v3.0 launch | ✅ shipped |
-| 8+    | Multi-provider Skills, embedding helpers, HTML reports, …      | ⏳ planned |
+| 8     | PyPI/Marketplace workflows + HTML reports + `ctx fix` + v4.0   | ✅ shipped |
+| 9+    | Multi-provider Skills, embedding helpers, PDF in RAG, …        | ⏳ planned |
 
 ## Supported targets
 
@@ -208,7 +210,11 @@ own walker.
 | `ctx lsp`     | Run the language server over stdio (requires `[lsp]` extras) |
 | `ctx eval`    | Run a `.eval.toml` against a real or mock provider (requires `[eval]` extras) |
 | `ctx eval-diff` | Compare two `ctx eval --json` outputs; exit 1 on regression |
+| `ctx fix`     | Auto-apply structured fixes (X003 / F001 / X001 / S005); `--dry-run` default |
 | `ctx --version` | Print version                                       |
+
+`ctx audit` and `ctx eval` also accept `--html` to emit a self-contained
+HTML page (mutually exclusive with `--json`).
 
 Every command has `--json` for machine-readable output and exits 1 only
 when an error-severity diagnostic fires.

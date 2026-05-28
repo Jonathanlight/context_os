@@ -291,13 +291,68 @@ fixtures (3/3 pass); live providers ship behind an `[eval]` extras
 gate with a clear install message when missing; `ctx eval-diff`
 reports regressions and exits 1 on the gate-relevant transitions.
 
-## Phase 8+ — Post-MVP
+## Phase 8 — Adoption & visualization (✅ shipped)
+
+**Goal achieved:** ContextOS shippable as PyPI + VSCode Marketplace
+packages, with HTML reports for audit and eval runs and a
+``ctx fix`` command that auto-applies the four structured
+code-actions across a repo.
+
+**Shipped (PRs #68 – #73):**
+
+- PyPI publish unblock + release docs: ``release.yml`` documents
+  the two supported paths (API token vs trusted publishing), prints
+  a workflow notice naming the path it will take, and ships a
+  manual ``scripts/publish-to-pypi.sh`` escape hatch for hotfixes
+  (PR #68).
+- VSCode Marketplace publish workflow: ``vscode-publish.yml``
+  triggered on the same ``v*`` tags as ``release.yml``; bumps
+  ``package.json`` to match the tag, builds, runs ``vsce publish``
+  when ``VSCE_PAT`` is set, degrades to build-only otherwise
+  (PR #69).
+- HTML audit report: ``ctx audit --html`` renders a self-contained
+  page with severity filters, per-file sections, cross-artifact
+  + skipped blocks, summary footer. Hand-rolled with
+  ``html.escape`` at every interpolation — no jinja2 dep — and
+  inline CSS+JS so the output is one drop-in file (PR #70).
+- HTML eval report: ``ctx eval --html`` renders cases as a
+  filterable table with PASS / FAIL chips, pass-rate progress
+  bar, token total badge, drill-down expected/actual per case,
+  inline error notes for provider failures (PR #71).
+- ``ctx fix`` + structured fixes: F001 (sentence-case ALL CAPS),
+  X001 (strip TODO/FIXME markers at title start), X003 (strip
+  trailing ?), S005 (prepend ``# <title>`` to SKILL.md body
+  lacking H1). Dry-run by default; ``--apply`` writes the new
+  content. Walks directories via the audit scanner (PR #72).
+- Docs (this PR): ``docs/dashboard.md`` covering both HTML
+  reports + the ``ctx fix`` workflow with safety properties and
+  a pre-commit hook example.
+- v4.0.0 release — Phase 8 closes; ContextOS shipments now span
+  PyPI, VSCode Marketplace, GitHub Marketplace (lint-action), and
+  self-contained HTML artifacts for downstream consumers.
+
+**Deferred to Phase 9+:**
+
+- Multi-provider Skills (OpenAI tools, local models) — Anthropic
+  remains the only Skills backend.
+- Embedding-provider CLI helpers (Voyage / Cohere shortcuts) —
+  OpenAI is the only built-in.
+- LSP code_actions.py / fix.structured.py unification (currently
+  X003 has two parallel implementations).
+- Additional structured fixes (C001 contradiction rephrase,
+  multi-edit refactors like moving URLs out of titles).
+- HTML report customization (themes, embeddable widgets).
+
+## Phase 9+ — Post-MVP
 
 - PDF support in RAG.
 - Cursor commands, GPT custom instructions.
 - LSP definition / documentSymbol for jump-to-rule.
 - Web app on `contextos.dev/app`.
 - `contextos/scaffold-action` for `ctx compile` in CI.
+- Multi-provider Skills (OpenAI tools, local models).
+- Embedding-provider CLI helpers.
+- LSP/fix de-dup.
 
 ---
 

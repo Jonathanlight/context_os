@@ -65,6 +65,7 @@ nav:
   - Getting started: getting-started.md
   - Editor integration: editor.md
   - Live evaluation: eval.md
+  - Visualization & auto-fix: dashboard.md
   - Releasing: release.md
   - Specs:
       - Vision: specs/VISION.md
