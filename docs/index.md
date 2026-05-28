@@ -1,0 +1,66 @@
+# ContextOS
+
+> Lint, unify, and study everything you give to an LLM.
+
+ContextOS is a Python toolkit for analyzing, generating, and comparing the
+context artifacts that drive LLMs: agent context files (`CLAUDE.md`,
+`AGENTS.md`, `.cursorrules`, `.cursor/rules/*.mdc`, `.clinerules`,
+`.windsurfrules`, `.github/copilot-instructions.md`), Anthropic Skills, and
+RAG corpora configurations.
+
+## What it does
+
+| Surface | Command | Phase |
+|---|---|---|
+| Parse a `.ctx` source | `ctx parse foo.ctx` | 1 |
+| Compile to a target | `ctx compile foo.ctx --target claude_code` | 1 / 3 |
+| Lint a file | `ctx lint CLAUDE.md --target claude_code` | 2 |
+| Diff two Documents | `ctx diff a.ctx b.ctx` | 3 |
+| Audit a repo | `ctx audit .` | 3 |
+| Aggregate corpus stats | `ctx stats path/to/corpus` | 4 |
+
+## The five principles
+
+1. **One format, many outputs.** A single `.ctx` source compiles to six target
+   formats that stay in sync.
+2. **Strict lint, actionable advice.** Every diagnostic carries a concrete
+   suggestion and a doc URL.
+3. **Semantic, not textual.** A common AST means diffs and audits look at
+   intent, not whitespace.
+4. **Vendor-independent.** No LLM calls in the core. Heuristics are
+   deterministic.
+5. **Open source.** MIT.
+
+## Quick example
+
+```bash
+pipx install context-os
+ctx compile project.ctx --target claude_code --output-dir .
+ctx lint CLAUDE.md --target claude_code
+ctx audit .
+```
+
+See [Getting started](getting-started.md) for the full walk-through, or jump
+straight to the [rules catalog](rules/index.md) to see what ContextOS
+checks for today.
+
+## Status
+
+🚀 **Phase 4 in progress.** v0.1.0 shipped; v1.0 launch tracks the
+[roadmap](specs/ROADMAP.md). 14 lint rules across A / C / F / K / P / X
+categories, plus one cross-artifact rule (XA001).
+
+## Supported targets
+
+- `claude_code` → `CLAUDE.md` (parse + emit + lint)
+- `codex` → `AGENTS.md` (parse + emit + lint)
+- `cursor` → `.cursor/rules/agent.mdc` (emit only)
+- `copilot` → `.github/copilot-instructions.md` (emit only)
+- `cline` → `.clinerules` (emit only)
+- `windsurf` → `.windsurfrules` (emit only)
+
+Skill (`SKILL.md`) and RAG support land in Phase 5 and Phase 6 respectively.
+
+## License
+
+[MIT](https://github.com/Jonathanlight/context_os/blob/develop/LICENSE) — Jonathan KABLAN, 2026.

@@ -1,0 +1,96 @@
+site_name: ContextOS
+site_description: The Operating System for LLM Context. Lint, unify, and study the artifacts that drive LLMs — agent context files, skills, and RAG corpora.
+site_url: https://jonathanlight.github.io/context_os/
+repo_url: https://github.com/Jonathanlight/context_os
+repo_name: Jonathanlight/context_os
+edit_uri: edit/develop/docs/
+copyright: MIT — Jonathan KABLAN
+
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.sections
+    - navigation.tabs
+    - navigation.top
+    - content.code.copy
+    - content.action.edit
+  palette:
+    - scheme: default
+      primary: black
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: black
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Inter
+    code: JetBrains Mono
+  icon:
+    repo: fontawesome/brands/github
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Jonathanlight/context_os
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      permalink_title: Anchor link to this section
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Specs:
+      - Vision: specs/VISION.md
+      - Spec: specs/SPEC.md
+      - Architecture: specs/ARCHITECTURE.md
+      - Roadmap: specs/ROADMAP.md
+      - Research: specs/RESEARCH.md
+  - Rules:
+      - Catalog: rules/index.md
+      - Ambiguity:
+          - A001 vague directive: rules/A001.md
+          - A002 subjective adjective: rules/A002.md
+          - A003 vague quantifier: rules/A003.md
+          - A004 hedging cadence: rules/A004.md
+      - Contradiction:
+          - C001 antonym overlap: rules/C001.md
+      - LLM-friendliness:
+          - F001 excessive caps: rules/F001.md
+          - F002 title too long: rules/F002.md
+          - F003 duplicate rule: rules/F003.md
+      - Completeness:
+          - K001 no rules: rules/K001.md
+          - K002 must without rationale: rules/K002.md
+          - K003 must without examples: rules/K003.md
+      - Anti-pattern:
+          - X001 placeholder marker: rules/X001.md
+          - X002 unfilled template: rules/X002.md
+          - X003 question instead of directive: rules/X003.md
+      - Platform:
+          - P001 personal absolute path: rules/P001.md
+          - P002 email in title: rules/P002.md
+          - P003 bare URL in title: rules/P003.md
