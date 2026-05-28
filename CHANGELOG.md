@@ -9,6 +9,133 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet.
 
+## [1.0.0] — 2026-05-28
+
+🚀 **First production release.** Phase 1 through Phase 4 deliverables —
+the full agent-family toolchain: parse, lint, compile across six target
+formats, semantic diff, repo-level audit, and corpus-wide stats. The
+public docs site is live at <https://jonathanlight.github.io/context_os/>.
+
+601 tests, mypy --strict clean on 84 source files, 94 % coverage.
+
+### Added
+
+#### Phase 2 — Lint rules (15 codes across six categories)
+
+- **Ambiguity (A)** — `A001` vague directive, `A002` subjective
+  adjective, `A003` vague quantifier, `A004` hedging cadence.
+- **Contradiction (C)** — `C001` antonym overlap heuristic (~80 %
+  precision; NLI-based detection lands post-MVP).
+- **LLM-friendliness (F)** — `F001` excessive ALL CAPS, `F002` rule
+  title too long, `F003` duplicate rule.
+- **Completeness (K)** — `K001` no rules declared, `K002` must-rule
+  without rationale, `K003` must-rule without examples (INFO).
+- **Anti-pattern (X)** — `X001` placeholder marker (TODO/FIXME),
+  `X002` unfilled template placeholder, `X003` question instead of
+  directive.
+- **Platform (P)** — `P001` personal absolute path, `P002` email
+  address in title, `P003` bare URL in title.
+- **Cross-artifact (XA)** — `XA001` rule id collision across files
+  (audit only).
+
+Each rule ships a `docs/rules/<code>.md` reference page with trigger,
+why-it-matters, suggested fix, and tuning knobs.
+
+#### Phase 3 — Multi-target emitters
+
+- `codex` → `AGENTS.md` (parse + emit + lint).
+- `cursor` → `.cursor/rules/agent.mdc` (emit only — `.mdc` parser is
+  Phase 5+).
+- `copilot` → `.github/copilot-instructions.md` (emit only).
+- `cline` → `.clinerules` (emit only).
+- `windsurf` → `.windsurfrules` (emit only).
+
+A private `_agent_base.py` exports the shared flat-Markdown emit logic
+the codex / copilot / cline / windsurf wrappers reuse. `claude_code`
+keeps its own H3-sub-section layout under Stack / Tools.
+
+#### Phase 3 — Semantic diff
+
+- `ctx diff <a> <b>` — structured AST-level diff between two
+  Documents. Reports project / identity / stack-bucket / rule
+  added-removed-modified / style / forbidden_patterns / tools changes.
+- Rule diffs cover title, severity, rationale, applies_to, and tags
+  changes per rule, matched by `Rule.id`.
+- `--json` flag for CI consumption (Pydantic model_dump_json, sort_keys).
+
+#### Phase 3 — Repo audit
+
+- `ctx audit <root>` — walks a repository, parses every recognized
+  agent file, runs per-file analyzers + cross-artifact rules.
+- `ProjectInferred` data model aggregates every artifact found.
+- Skipped files (`.cursorrules`, `.clinerules`, `.windsurfrules`,
+  `.github/copilot-instructions.md`) listed explicitly so coverage
+  gaps stay visible.
+- `--json` shape for downstream dashboards / Markdown-to-HTML
+  generators.
+- XA001 fires when the same `Rule.id` appears in multiple files with
+  conflicting (title, severity) signatures.
+
+#### Phase 4 — Corpus stats
+
+- `ctx stats <root>` — rolls an audit report into per-severity counts,
+  top diagnostic codes (sorted by frequency, ties lexicographic), per-
+  file rule counts, and target coverage.
+- `--top N` flag for the top-codes count (default 10).
+- `--json` for machine consumption.
+
+#### Phase 4 — Documentation site
+
+- MkDocs Material site auto-deployed by `.github/workflows/docs.yml`
+  on push to `develop` or `main`.
+- Landing page, five-minute getting-started tutorial, rules catalog
+  with one page per code, and the five spec pages (Vision, Spec,
+  Architecture, Roadmap, Research) all wired into the navigation.
+- New `docs` optional-dependencies extra (`mkdocs>=1.5`,
+  `mkdocs-material>=9.0`) — opt-in, doesn't bloat the runtime install.
+
+#### Phase 4 — README launch polish
+
+- CI / Docs / PyPI / Python / MIT badges.
+- "Why ContextOS" framing with the three-families problem.
+- Five-minute tour with verbatim CLI output for `lint`, `diff`,
+  `audit`, and `stats`.
+- Phase status matrix and supported-targets parse/emit table.
+
+### Changed
+
+- `Development Status` classifier moves from `3 - Alpha` to
+  `5 - Production/Stable`.
+- CLI surface is now seven commands: `parse`, `compile`, `lint`,
+  `diff`, `audit`, `stats`, `--version`.
+- Severity contract: every command exits 1 only when an error-severity
+  diagnostic fires. Warnings and info do not break CI by default.
+
+### Notable design decisions
+
+- Function-form emitters (not a class hierarchy) for the agent family.
+  `_agent_base.emit_flat_agent_markdown` is the canonical shared
+  implementation; each target's named function is a thin wrapper for
+  CLI dispatch.
+- Rule severity is preserved across a Markdown round-trip by
+  prefixing the title with `Must` / `Should` / `May` when the original
+  title's leading word doesn't already imply the severity.
+- Cross-artifact rules live in the audit, not in the per-file lint.
+  Stats aggregates over the audit so neither the scanner nor the
+  analyzer pipeline runs twice.
+
+### Documented limitations (rolled to Phase 5+)
+
+- Anthropic Skills (`SKILL.md` parsing + emit + lint) — Phase 5.
+- RAG corpora (`rag_config.*` parsing + audit + manifest emit) —
+  Phase 6.
+- Parsers for cursor / copilot / cline / windsurf — Phase 5+ (formats
+  are structurally different enough from `CLAUDE.md` to warrant
+  per-target walkers).
+- HTML audit report — JSON renderer is the bridge today; a downstream
+  Markdown-to-HTML converter consumes the JSON.
+- NLI-based contradiction detector (planned upgrade path for C001).
+
 ## [0.1.0] — 2026-05-27
 
 Phase 1 deliverable. ContextOS now parses a `.ctx` source, walks an
