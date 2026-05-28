@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 
@@ -463,3 +463,220 @@ def _emit_payload(payload: str, *, output: Path | None) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(payload, encoding="utf-8")
     typer.echo(f"wrote {output}")
+
+
+# --- ctx eval ---------------------------------------------------------------
+
+_EVAL_SUITE_HELP = "Eval suite to run (``.eval.toml``)."
+_EVAL_DRY_RUN_HELP = (
+    "Use a mock provider that returns the expected answer for every case. "
+    "Validates suite parsing + wiring without spending tokens or hitting "
+    "an API. Every case passes by construction."
+)
+_EVAL_SKILLS_DIR_HELP = (
+    "Directory containing SKILL.md files (recursive walk). Required for "
+    "skill suites; ignored for rag suites."
+)
+_EVAL_RAG_CHUNKS_HELP = (
+    "JSON file with pre-indexed chunks (list of {source, vector, content?}). "
+    "Required for rag suites running against a real embedding provider; "
+    "ignored in --dry-run."
+)
+_EVAL_RAG_EMBED_MODEL_HELP = (
+    "OpenAI embedding model for the query side. Default: "
+    "text-embedding-3-large. Must match the model that produced the "
+    "chunks' vectors."
+)
+
+EvalSuiteFile = Annotated[
+    Path,
+    typer.Argument(exists=True, dir_okay=False, readable=True, help=_EVAL_SUITE_HELP),
+]
+EvalDryRun = Annotated[bool, typer.Option("--dry-run", help=_EVAL_DRY_RUN_HELP)]
+EvalJson = Annotated[bool, typer.Option("--json", help="Emit JSON instead of human-readable text.")]
+EvalOutput = Annotated[
+    Path | None,
+    typer.Option("--output", "-o", help="Write the rendered output to this path."),
+]
+EvalSkillsDir = Annotated[
+    Path | None,
+    typer.Option("--skills-dir", help=_EVAL_SKILLS_DIR_HELP),
+]
+EvalRagChunks = Annotated[
+    Path | None,
+    typer.Option("--rag-chunks", help=_EVAL_RAG_CHUNKS_HELP),
+]
+EvalRagEmbedModel = Annotated[
+    str,
+    typer.Option("--rag-embed-model", help=_EVAL_RAG_EMBED_MODEL_HELP),
+]
+
+
+@app.command(name="eval")
+def eval_cmd(
+    suite_file: EvalSuiteFile,
+    dry_run: EvalDryRun = False,
+    json_output: EvalJson = False,
+    output: EvalOutput = None,
+    skills_dir: EvalSkillsDir = None,
+    rag_chunks: EvalRagChunks = None,
+    rag_embed_model: EvalRagEmbedModel = "text-embedding-3-large",
+) -> None:
+    """Run a ``.eval.toml`` suite against a real (or mock) provider.
+
+    Behavior is dispatched by ``suite.target``:
+
+    - ``anthropic_skill`` — invokes the model via the Anthropic SDK
+      with the loaded skills attached as tools. Requires the ``[eval]``
+      extras and ``ANTHROPIC_API_KEY``. ``--skills-dir`` points at a
+      directory of ``SKILL.md`` files (walked recursively).
+    - ``rag`` — embeds the query via OpenAI, ranks the pre-indexed
+      chunks by cosine similarity, checks if any expected source is
+      in the top_k. Requires ``OPENAI_API_KEY`` and a chunks file
+      passed via ``--rag-chunks``.
+
+    ``--dry-run`` bypasses both real providers and uses an internal
+    Mock that returns the expected answer for every case — useful to
+    smoke-test the suite shape and the runner wiring without
+    spending API budget.
+
+    Exit code:
+
+    - 0 — every case passed.
+    - 1 — at least one case failed or the run errored before
+      starting (missing skills dir, malformed chunks, etc).
+    """
+    from contextos.eval import (  # noqa: PLC0415 — lazy by design
+        EvalRunResult,
+        RagEvalRunner,
+        SkillEvalRunner,
+    )
+    from contextos.eval.cli_helpers import (  # noqa: PLC0415 — lazy by design
+        build_dry_run_rag_provider,
+        build_dry_run_skill_provider,
+        build_openai_embed_query,
+        load_chunks,
+        load_skills_from_dir,
+    )
+    from contextos.eval.renderer import (  # noqa: PLC0415 — lazy by design
+        render_eval_cli,
+        render_eval_json,
+    )
+    from contextos.parsers import parse_eval_file  # noqa: PLC0415 — heavy imports near use
+
+    try:
+        suite = parse_eval_file(suite_file)
+    except ContextOSParseError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    result: EvalRunResult
+    if suite.target == "anthropic_skill":
+        result = _run_skill_eval(
+            suite=suite,
+            dry_run=dry_run,
+            skills_dir=skills_dir,
+            build_dry_run=build_dry_run_skill_provider,
+            load_skills=load_skills_from_dir,
+            runner_cls=SkillEvalRunner,
+        )
+    elif suite.target == "rag":
+        result = _run_rag_eval(
+            suite=suite,
+            dry_run=dry_run,
+            rag_chunks=rag_chunks,
+            rag_embed_model=rag_embed_model,
+            build_dry_run=build_dry_run_rag_provider,
+            load_chunks_fn=load_chunks,
+            build_embed=build_openai_embed_query,
+            runner_cls=RagEvalRunner,
+        )
+    else:  # pragma: no cover — Pydantic literal rejects others upstream
+        typer.echo(f"unsupported suite target: {suite.target}", err=True)
+        raise typer.Exit(code=1)
+
+    rendered = render_eval_json(result) if json_output else render_eval_cli(result)
+    _emit_payload(rendered, output=output)
+
+    if result.fail_count > 0:
+        raise typer.Exit(code=1)
+
+
+def _run_skill_eval(
+    *,
+    suite: Any,
+    dry_run: bool,
+    skills_dir: Path | None,
+    build_dry_run: Any,
+    load_skills: Any,
+    runner_cls: Any,
+) -> Any:
+    """Dispatch a skill eval to the right provider + runner.
+
+    Kept out of ``eval_cmd`` so the command body stays under the
+    Typer / ruff complexity ceiling. ``Any`` typing is the price of
+    the lazy imports — the call sites validate shapes.
+    """
+    if dry_run:
+        provider = build_dry_run(suite)
+        skills: list[Any] = []
+    else:
+        if skills_dir is None:
+            typer.echo(
+                "skill eval needs --skills-dir <path>; pass --dry-run to skip "
+                "the live provider.",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        try:
+            from contextos.eval.anthropic_provider import (  # noqa: PLC0415 — lazy
+                AnthropicSkillProvider,
+            )
+        except ImportError as exc:  # pragma: no cover
+            typer.echo(
+                "ctx eval (live) requires the 'eval' extras: `pip install context-os[eval]`",
+                err=True,
+            )
+            raise typer.Exit(code=1) from exc
+        provider = AnthropicSkillProvider()
+        skills = load_skills(skills_dir)
+    return runner_cls(provider).run(suite, skills)
+
+
+def _run_rag_eval(
+    *,
+    suite: Any,
+    dry_run: bool,
+    rag_chunks: Path | None,
+    rag_embed_model: str,
+    build_dry_run: Any,
+    load_chunks_fn: Any,
+    build_embed: Any,
+    runner_cls: Any,
+) -> Any:
+    """Dispatch a rag eval to the right provider + runner."""
+    if dry_run:
+        provider = build_dry_run(suite)
+    else:
+        if rag_chunks is None:
+            typer.echo(
+                "rag eval needs --rag-chunks <path>; pass --dry-run to skip "
+                "the live provider.",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        try:
+            from contextos.eval.embedding_provider import (  # noqa: PLC0415 — lazy
+                EmbeddingRagProvider,
+            )
+        except ImportError as exc:  # pragma: no cover
+            typer.echo(
+                "ctx eval (live rag) requires the 'eval' extras: "
+                "`pip install context-os[eval]`",
+                err=True,
+            )
+            raise typer.Exit(code=1) from exc
+        chunks = load_chunks_fn(rag_chunks)
+        embed = build_embed(rag_embed_model)
+        provider = EmbeddingRagProvider(chunks=chunks, embed_query=embed)
+    return runner_cls(provider).run(suite)
