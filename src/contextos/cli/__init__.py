@@ -836,3 +836,76 @@ def eval_diff_cmd(
         raise typer.Exit(code=1)
     if fail_on_new_failure and diff.has_new_failures():
         raise typer.Exit(code=1)
+
+
+# --- ctx fix ---------------------------------------------------------------
+
+_FIX_TARGET_HELP = (
+    "File or directory to fix. Directories are walked the same way "
+    "``ctx audit`` walks them (CLAUDE.md / AGENTS.md / SKILL.md / *.ctx)."
+)
+_FIX_APPLY_HELP = (
+    "Write the fixed content back to disk. Without this flag, ``ctx fix`` "
+    "prints a diff and leaves files untouched."
+)
+
+FixTarget = Annotated[
+    Path,
+    typer.Argument(exists=True, readable=True, help=_FIX_TARGET_HELP),
+]
+FixApply = Annotated[bool, typer.Option("--apply", help=_FIX_APPLY_HELP)]
+
+
+@app.command(name="fix")
+def fix_cmd(
+    target: FixTarget,
+    apply: FixApply = False,
+) -> None:
+    """Apply structured fixes for the four supported diagnostic codes.
+
+    Supported fixes today: ``X003`` (drop trailing ``?`` from a rule
+    title), ``F001`` (sentence-case an ALL CAPS title), ``X001``
+    (strip ``TODO`` / ``FIXME`` / ``XXX`` / ``HACK`` markers at the
+    start of a title), ``S005`` (prepend ``# <title>`` to a SKILL.md
+    body that lacks an H1).
+
+    Default behavior is ``--dry-run``: the command prints a unified
+    diff of what would change and exits 0. Pass ``--apply`` to write
+    the fixes back to disk.
+    """
+    import difflib  # noqa: PLC0415
+
+    from contextos.fix import fix_path  # noqa: PLC0415
+
+    try:
+        results = fix_path(target)
+    except ValueError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    changed = [r for r in results if r.changed()]
+    if not changed:
+        typer.echo("no fixable diagnostics found")
+        raise typer.Exit(code=0)
+
+    for result in changed:
+        codes = ", ".join(sorted(set(result.applied_codes)))
+        typer.echo(f"--- {result.path} ({codes})")
+        if apply:
+            result.path.write_text(result.new_text, encoding="utf-8")
+            typer.echo(f"wrote {result.path}")
+        else:
+            diff = difflib.unified_diff(
+                result.original_text.splitlines(keepends=True),
+                result.new_text.splitlines(keepends=True),
+                fromfile=str(result.path),
+                tofile=f"{result.path} (fixed)",
+            )
+            typer.echo("".join(diff))
+
+    if apply:
+        typer.echo(f"applied fixes to {len(changed)} file(s)")
+    else:
+        typer.echo(
+            f"dry-run: {len(changed)} file(s) would change. Re-run with --apply."
+        )
