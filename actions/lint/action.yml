@@ -1,0 +1,192 @@
+name: 'ContextOS Lint'
+description: 'Run ctx audit on a repository and surface results inline + as a PR comment.'
+author: 'Jonathan KABLAN'
+branding:
+  icon: 'check-circle'
+  color: 'purple'
+
+inputs:
+  path:
+    description: 'Path to audit (default: the repo root).'
+    required: false
+    default: '.'
+  python-version:
+    description: 'Python version for setup-python. Must be >= 3.12.'
+    required: false
+    default: '3.12'
+  context-os-spec:
+    description: |
+      pip install spec for the ContextOS package. Use the bare name
+      "context-os" (default) to pull the latest published release, or
+      override with a version pin ("context-os==2.0.0"), an editable
+      install ("-e ./"), or a git URL.
+    required: false
+    default: 'context-os'
+  fail-on-error:
+    description: |
+      When "true" (default), the action exits non-zero if the audit
+      reports any error-severity diagnostic. Warnings and info do not
+      affect the exit code regardless of this setting.
+    required: false
+    default: 'true'
+  comment-on-pr:
+    description: |
+      When "true" (default) and the workflow runs on a pull_request
+      event, post the audit report as a sticky PR comment (one comment
+      per workflow, updated in place on re-runs).
+    required: false
+    default: 'true'
+  github-token:
+    description: |
+      Token used to post the PR comment. Defaults to the workflow's
+      ``GITHUB_TOKEN``. Override only if you need cross-repo posting.
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  exit-code:
+    description: 'Exit code of `ctx audit`. 0 = clean (no error-severity); 1 = errors fired.'
+    value: ${{ steps.audit.outputs.exit-code }}
+  diagnostic-count:
+    description: 'Total number of diagnostics produced by the audit.'
+    value: ${{ steps.audit.outputs.diagnostic-count }}
+  audit-json-path:
+    description: 'Filesystem path to the raw JSON report (audit.json in the runner workspace).'
+    value: ${{ steps.audit.outputs.audit-json-path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install ContextOS
+      shell: bash
+      run: |
+        set -euo pipefail
+        python -m pip install --upgrade pip
+        # ${{ inputs.context-os-spec }} is intentionally unquoted so
+        # an editable install ("-e ./") or a multi-arg spec splits
+        # correctly into pip's argv.
+        python -m pip install ${{ inputs.context-os-spec }}
+        ctx --version
+
+    - name: Run audit
+      id: audit
+      shell: bash
+      env:
+        AUDIT_PATH: ${{ inputs.path }}
+        FAIL_ON_ERROR: ${{ inputs.fail-on-error }}
+      run: |
+        set +e
+        # Capture JSON for the PR-comment step (sticky comment needs
+        # the structured shape) and pretty-print to the action log so
+        # the user sees diagnostics inline in the run output.
+        ctx audit "$AUDIT_PATH"
+        ctx audit "$AUDIT_PATH" --json > audit.json
+        EXIT_CODE=$?
+        echo "exit-code=$EXIT_CODE" >> "$GITHUB_OUTPUT"
+        echo "audit-json-path=$GITHUB_WORKSPACE/audit.json" >> "$GITHUB_OUTPUT"
+        # `total_count` is the canonical aggregate exposed by the
+        # AuditReport renderer. jq is preinstalled on every runner.
+        TOTAL=$(jq -r '.total_count // 0' audit.json)
+        echo "diagnostic-count=$TOTAL" >> "$GITHUB_OUTPUT"
+        if [ "$FAIL_ON_ERROR" = "true" ] && [ "$EXIT_CODE" -ne 0 ]; then
+          exit "$EXIT_CODE"
+        fi
+
+    - name: Post PR comment
+      if: ${{ github.event_name == 'pull_request' && inputs.comment-on-pr == 'true' }}
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ inputs.github-token }}
+        script: |
+          // Sticky comment pattern: one comment per workflow, updated
+          // in place on re-run. We tag the comment with a hidden
+          // HTML marker so subsequent runs find their own previous
+          // comment without grepping for fuzzy text matches.
+          const fs = require('fs');
+          const audit = JSON.parse(fs.readFileSync('audit.json', 'utf-8'));
+
+          const MARKER = '<!-- contextos-lint-action-comment -->';
+
+          const counts = { error: 0, warning: 0, info: 0 };
+          const sectionLines = [];
+
+          const formatLine = (diag) => {
+            const sev = (diag.severity || '').toLowerCase();
+            counts[sev] = (counts[sev] || 0) + 1;
+            const where = diag.position
+              ? `${diag.position.line}:${diag.position.column}`
+              : '?';
+            return `- \`[${diag.code} ${sev}]\` ${diag.message} _(at ${where})_`;
+          };
+
+          // Per-file sections — sorted for deterministic comment shape.
+          const paths = Object.keys(audit.per_file || {}).sort();
+          for (const path of paths) {
+            const diags = audit.per_file[path];
+            sectionLines.push(`#### \`${path}\``);
+            if (!diags || diags.length === 0) {
+              sectionLines.push('_no diagnostics_');
+            } else {
+              for (const d of diags) sectionLines.push(formatLine(d));
+            }
+            sectionLines.push('');
+          }
+
+          if ((audit.cross_artifact || []).length > 0) {
+            sectionLines.push('#### Cross-artifact');
+            for (const d of audit.cross_artifact) sectionLines.push(formatLine(d));
+            sectionLines.push('');
+          }
+
+          if ((audit.skipped || []).length > 0) {
+            sectionLines.push('#### Skipped files');
+            for (const s of audit.skipped) {
+              sectionLines.push(`- \`${s.path}\` [${s.target}] — ${s.reason}`);
+            }
+            sectionLines.push('');
+          }
+
+          const summary =
+            `**Total:** ${audit.total_count || 0} diagnostic(s)` +
+            ` — error: ${counts.error}, warning: ${counts.warning}, info: ${counts.info}`;
+
+          const body = [
+            MARKER,
+            '## 🧠 ContextOS audit',
+            '',
+            summary,
+            '',
+            ...sectionLines,
+            '---',
+            '_Generated by [ContextOS](https://contextos.dev) via `contextos/lint-action`._',
+          ].join('\n');
+
+          // Find an existing marker comment to update; otherwise create a new one.
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            per_page: 100,
+          });
+          const existing = comments.find(c => c.body && c.body.includes(MARKER));
+
+          if (existing) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existing.id,
+              body,
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+          }

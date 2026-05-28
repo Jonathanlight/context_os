@@ -1,0 +1,22 @@
+# Minimal example workflow consumers can copy into .github/workflows/.
+# Lints the repo on every PR + push to main; surfaces results in the
+# workflow log and as a sticky PR comment.
+
+name: ContextOS lint
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write  # required for the sticky PR comment
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Jonathanlight/context_os/actions/lint@v2.0.0

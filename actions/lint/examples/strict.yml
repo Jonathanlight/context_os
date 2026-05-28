@@ -1,0 +1,23 @@
+# Strict example: pin the ContextOS version, block the merge on
+# error-severity diagnostics, and skip the PR comment so the action
+# only surfaces through the workflow log.
+
+name: ContextOS strict gate
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Jonathanlight/context_os/actions/lint@v2.0.0
+        with:
+          context-os-spec: 'context-os==2.0.0'
+          fail-on-error: 'true'
+          comment-on-pr: 'false'
