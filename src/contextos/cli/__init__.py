@@ -28,7 +28,14 @@ from contextos import __version__
 from contextos.analyzers import lint_document
 from contextos.ast.document import Document
 from contextos.diagnostics import render_cli_many, render_json_many
-from contextos.emitters import emit_claude_markdown, emit_codex_markdown
+from contextos.emitters import (
+    emit_claude_markdown,
+    emit_clinerules,
+    emit_codex_markdown,
+    emit_copilot_instructions,
+    emit_cursor_mdc,
+    emit_windsurfrules,
+)
 from contextos.parsers import (
     SUPPORTED_TARGETS,
     ContextOSParseError,
@@ -44,11 +51,24 @@ app = typer.Typer(
     add_completion=False,
 )
 
-# Compilation targets supported by `ctx compile`. Phase 3 adds codex.
-_COMPILE_TARGETS = ("claude_code", "codex")
+# Compilation targets supported by `ctx compile`. Phase 3 wires the full
+# agent fleet: codex (AGENTS.md), cursor (.cursor/rules/*.mdc), and the
+# three flat-Markdown targets copilot / cline / windsurf.
+_COMPILE_TARGETS = (
+    "claude_code",
+    "codex",
+    "cursor",
+    "copilot",
+    "cline",
+    "windsurf",
+)
 _TARGET_FILENAMES: dict[str, str] = {
     "claude_code": "CLAUDE.md",
     "codex": "AGENTS.md",
+    "cursor": ".cursor/rules/agent.mdc",
+    "copilot": ".github/copilot-instructions.md",
+    "cline": ".clinerules",
+    "windsurf": ".windsurfrules",
 }
 
 
@@ -213,8 +233,9 @@ def compile_cmd(
         return
 
     out_path = output_dir / target_filename
-    # Some targets ship nested paths (`.cursor/rules/agent.mdc`); create the
-    # full parent chain rather than just the bare output_dir.
+    # Some targets ship nested filenames (`.cursor/rules/agent.mdc`,
+    # `.github/copilot-instructions.md`); create the full parent chain
+    # rather than just the bare output_dir.
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(rendered, encoding="utf-8")
     typer.echo(f"wrote {out_path}")
@@ -239,6 +260,14 @@ def _render_for_target(doc: Document, *, target: str) -> str:
         return emit_claude_markdown(doc)
     if target == "codex":
         return emit_codex_markdown(doc)
+    if target == "cursor":
+        return emit_cursor_mdc(doc)
+    if target == "copilot":
+        return emit_copilot_instructions(doc)
+    if target == "cline":
+        return emit_clinerules(doc)
+    if target == "windsurf":
+        return emit_windsurfrules(doc)
     # Guarded upstream by the _COMPILE_TARGETS check; safety net for the future.
     msg = f"no emitter wired for target '{target}'"
     raise RuntimeError(msg)

@@ -206,6 +206,54 @@ class TestCompile:
         assert "ASSISTANT RULES" in result.stdout
 
 
+class TestCompileFlatTargets:
+    """copilot / cline / windsurf — three targets sharing the flat-Markdown emitter."""
+
+    def test_copilot_writes_nested_path(self, tmp_path: Path) -> None:
+        ctx = _write_ctx(tmp_path)
+        out_dir = tmp_path / "out"
+        result = runner.invoke(
+            app,
+            ["compile", str(ctx), "--target", "copilot", "--output-dir", str(out_dir)],
+        )
+        assert result.exit_code == 0
+        written = out_dir / ".github" / "copilot-instructions.md"
+        assert written.exists()
+        body = written.read_text(encoding="utf-8")
+        assert body.startswith("# CLISample")
+
+    def test_cline_writes_root_dotfile(self, tmp_path: Path) -> None:
+        ctx = _write_ctx(tmp_path)
+        out_dir = tmp_path / "out"
+        result = runner.invoke(
+            app,
+            ["compile", str(ctx), "--target", "cline", "--output-dir", str(out_dir)],
+        )
+        assert result.exit_code == 0
+        written = out_dir / ".clinerules"
+        assert written.exists()
+        assert written.read_text().startswith("# CLISample")
+
+    def test_windsurf_writes_root_dotfile(self, tmp_path: Path) -> None:
+        ctx = _write_ctx(tmp_path)
+        out_dir = tmp_path / "out"
+        result = runner.invoke(
+            app,
+            ["compile", str(ctx), "--target", "windsurf", "--output-dir", str(out_dir)],
+        )
+        assert result.exit_code == 0
+        written = out_dir / ".windsurfrules"
+        assert written.exists()
+        assert written.read_text().startswith("# CLISample")
+
+    def test_stdout_when_no_output_dir(self, tmp_path: Path) -> None:
+        ctx = _write_ctx(tmp_path)
+        result = runner.invoke(app, ["compile", str(ctx), "--target", "copilot"])
+        assert result.exit_code == 0
+        assert "# CLISample" in result.stdout
+        assert "## Rules" in result.stdout
+
+
 class TestLint:
     def test_clean_ctx_reports_no_diagnostics(self, tmp_path: Path) -> None:
         ctx = _write_ctx(tmp_path)
