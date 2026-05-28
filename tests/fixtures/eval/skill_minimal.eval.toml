@@ -1,0 +1,7 @@
+project = "PdfExtract"
+target = "anthropic_skill"
+
+[[skill_case]]
+name = "happy-path"
+prompt = "Extract the line items from this invoice.pdf"
+expected_skill = "pdf-extract"

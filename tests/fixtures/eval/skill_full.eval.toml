@@ -1,0 +1,20 @@
+project = "PdfExtract"
+target = "anthropic_skill"
+suite_version = "1.0"
+
+[[skill_case]]
+name = "happy-path-en"
+prompt = "Extract the line items from this invoice.pdf"
+expected_skill = "pdf-extract"
+tags = ["en", "happy-path"]
+
+[[skill_case]]
+name = "happy-path-fr"
+prompt = "Extraire les lignes de cette facture.pdf"
+expected_skill = "pdf-extract"
+tags = ["fr"]
+
+[[skill_case]]
+name = "negative-routing"
+prompt = "What's the weather in Paris today?"
+expected_skill = "weather-lookup"

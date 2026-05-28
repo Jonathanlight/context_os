@@ -13,6 +13,10 @@ from contextos.parsers.ctx_parser import (
     parse_ctx_file,
     parse_ctx_string,
 )
+from contextos.parsers.eval_parser import (
+    parse_eval_file,
+    parse_eval_string,
+)
 from contextos.parsers.markdown_parser import (
     SUPPORTED_TARGETS,
     parse_markdown_file,
@@ -29,6 +33,8 @@ __all__ = [
     "dump_ctx_string",
     "parse_ctx_file",
     "parse_ctx_string",
+    "parse_eval_file",
+    "parse_eval_string",
     "parse_markdown_file",
     "parse_markdown_string",
     "parse_skill_file",

@@ -1,0 +1,8 @@
+project = "PolicyCorpus"
+target = "rag"
+
+[[rag_case]]
+name = "vacation-policy"
+query = "What is the maximum vacation balance?"
+expected_sources = ["docs/policies/vacation.md"]
+top_k = 5
