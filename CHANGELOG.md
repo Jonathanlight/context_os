@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet.
 
+## [4.0.2] — 2026-05-29
+
+README-only re-publish to refresh the PyPI project page.
+
+### Fixed
+
+- README logo now resolves on PyPI. v4.0.1 was uploaded with the
+  logo referenced as ``logo.png`` (relative path); PyPI's Camo proxy
+  cached that as a dead URL because PyPI doesn't serve repo assets.
+  v4.0.1's PyPI README was frozen at upload time so the absolute
+  ``raw.githubusercontent.com`` URL that landed on develop after the
+  publish couldn't reach PyPI without a fresh version bump. This
+  release pushes the corrected README so the logo renders inline on
+  the project page.
+- No code changes vs v4.0.1.
+
 ## [4.0.1] — 2026-05-28
 
 Hotfix release. The shipped feature set is identical to v4.0.0 — this
