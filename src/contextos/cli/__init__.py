@@ -28,6 +28,7 @@ from contextos import __version__
 from contextos.analyzers import lint_document
 from contextos.ast.document import Document
 from contextos.diagnostics import render_cli_many, render_json_many
+from contextos.diff import diff_documents, render_diff_cli, render_diff_json
 from contextos.emitters import (
     emit_claude_markdown,
     emit_clinerules,
@@ -172,6 +173,46 @@ def lint(
         typer.echo(render_cli_many(bag, color=not no_color))
 
     raise typer.Exit(code=1 if bag.has_errors() else 0)
+
+
+_DIFF_FILE_HELP = "Source file (``.ctx`` or Markdown with --target)."
+_DIFF_TARGET_HELP = (
+    "Markdown source target — both files must use the same target. "
+    f"Supported: {', '.join(SUPPORTED_TARGETS)}."
+)
+
+DiffFileA = Annotated[
+    Path,
+    typer.Argument(exists=True, dir_okay=False, readable=True, help=_DIFF_FILE_HELP),
+]
+DiffFileB = Annotated[
+    Path,
+    typer.Argument(exists=True, dir_okay=False, readable=True, help=_DIFF_FILE_HELP),
+]
+DiffTarget = Annotated[str | None, typer.Option("--target", "-t", help=_DIFF_TARGET_HELP)]
+DiffJson = Annotated[bool, typer.Option("--json", help="Emit JSON instead of text.")]
+
+
+@app.command()
+def diff(
+    file_a: DiffFileA,
+    file_b: DiffFileB,
+    target: DiffTarget = None,
+    json_output: DiffJson = False,
+) -> None:
+    """Diff two context Documents at the AST level."""
+    try:
+        doc_a = _dispatch_parse(file_a, target=target)
+        doc_b = _dispatch_parse(file_b, target=target)
+    except ContextOSParseError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    structured = diff_documents(doc_a, doc_b)
+    if json_output:
+        typer.echo(render_diff_json(structured, indent=2))
+    else:
+        typer.echo(render_diff_cli(structured))
 
 
 _COMPILE_TARGET_HELP = f"Output target. Supported: {', '.join(_COMPILE_TARGETS)}."
