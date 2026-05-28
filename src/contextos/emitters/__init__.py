@@ -15,6 +15,7 @@ from contextos.emitters.cline import emit_clinerules
 from contextos.emitters.codex import emit_codex_markdown
 from contextos.emitters.copilot import emit_copilot_instructions
 from contextos.emitters.cursor import emit_cursor_mdc
+from contextos.emitters.rag import emit_rag_manifest
 from contextos.emitters.skill import emit_skill_markdown
 from contextos.emitters.windsurf import emit_windsurfrules
 
@@ -24,6 +25,7 @@ __all__ = [
     "emit_codex_markdown",
     "emit_copilot_instructions",
     "emit_cursor_mdc",
+    "emit_rag_manifest",
     "emit_skill_markdown",
     "emit_windsurfrules",
 ]
