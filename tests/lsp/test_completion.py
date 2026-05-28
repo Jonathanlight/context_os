@@ -115,7 +115,9 @@ class TestSkillFrontmatterCompletion:
 
     def test_expected_output_format_value_completes(self) -> None:
         text = "---\nexpected_output_format: "
-        items = compute_completions(text, _at(1, len("expected_output_format: ")), "file:///tmp/SKILL.md")
+        items = compute_completions(
+            text, _at(1, len("expected_output_format: ")), "file:///tmp/SKILL.md"
+        )
         labels = _labels(items)
         assert set(labels) == {"json", "markdown", "text", "yaml", "toml"}
 

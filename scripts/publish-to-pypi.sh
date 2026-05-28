@@ -45,4 +45,4 @@ python -m twine upload dist/* \
   --password "$PYPI_API_TOKEN_LOCAL"
 
 echo ""
-echo "Done. Verify at https://pypi.org/project/context-os/"
+echo "Done. Verify at https://pypi.org/project/context-os-ctx/"

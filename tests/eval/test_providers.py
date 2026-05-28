@@ -16,10 +16,7 @@ def _skill(name: str = "demo") -> SkillDocument:
     return SkillDocument(
         name=name,
         title=f"Skill {name}",
-        description=(
-            f"A demo skill named {name}. Triggers when the user asks "
-            "to run the demo."
-        ),
+        description=(f"A demo skill named {name}. Triggers when the user asks to run the demo."),
     )
 
 

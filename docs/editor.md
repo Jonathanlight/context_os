@@ -28,12 +28,19 @@ message, and the same suggested fix.
 ## Install
 
 The LSP server ships as an optional extras group so CLI-only users
-don't pay for `pygls`:
+don't pay for `pygls`.
+
+> **PyPI publication is pending** — install from the git source until
+> the first release lands.
 
 ```bash
-pipx install context-os[lsp]
+# From git source (today)
+pipx install 'git+https://github.com/Jonathanlight/context_os.git#egg=context-os-ctx[lsp]'
+
+# Once published on PyPI
+pipx install 'context-os-ctx[lsp]'
 # or
-pip install 'context-os[lsp]'
+pip install 'context-os-ctx[lsp]'
 ```
 
 Verify the binary spawns:
@@ -173,7 +180,7 @@ for the full input table and the sticky-comment behavior.
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
-| `ctx lsp` not found | Installed without `[lsp]` extras | `pipx install --force context-os[lsp]` |
+| `ctx lsp` not found | Installed without `[lsp]` extras | `pipx install --force context-os-ctx[lsp]` |
 | VSCode shows a one-shot error notification at activation | `contextos.command` points at a missing binary | Set the absolute path in settings |
 | No diagnostics on `SKILL.md` | The extension watches `**/SKILL.md`; case-sensitive | Confirm the filename is exactly `SKILL.md` |
 | LSP traffic dump empty | `contextos.trace.server` is `off` | Bump to `messages` and reload |

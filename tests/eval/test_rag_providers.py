@@ -29,16 +29,12 @@ class TestChunk:
 
 class TestMockRagProvider:
     def test_returns_table_entry(self) -> None:
-        provider = MockRagProvider(
-            {"what is X?": ["docs/x.md", "docs/other.md"]}
-        )
+        provider = MockRagProvider({"what is X?": ["docs/x.md", "docs/other.md"]})
         response = provider.retrieve("what is X?", top_k=5)
         assert response.retrieved_sources == ["docs/x.md", "docs/other.md"]
 
     def test_top_k_truncates(self) -> None:
-        provider = MockRagProvider(
-            {"q": ["a", "b", "c", "d", "e"]}
-        )
+        provider = MockRagProvider({"q": ["a", "b", "c", "d", "e"]})
         response = provider.retrieve("q", top_k=2)
         assert response.retrieved_sources == ["a", "b"]
 

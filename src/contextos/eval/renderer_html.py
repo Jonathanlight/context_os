@@ -99,11 +99,7 @@ def _render_case_row(case: object) -> str:
     status_label = "PASS" if passed else "FAIL"
     actual_text = html.escape(str(actual)) if actual is not None else "<em>(none)</em>"
     tokens_cell = str(tokens_used) if tokens_used is not None else "&ndash;"
-    error_block = (
-        f'<div class="error-note">{html.escape(str(error))}</div>'
-        if error
-        else ""
-    )
+    error_block = f'<div class="error-note">{html.escape(str(error))}</div>' if error else ""
 
     return (
         f'<tr class="case {status_class}" data-status="{status_class}">'

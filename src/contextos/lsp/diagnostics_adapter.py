@@ -43,9 +43,7 @@ def to_lsp_diagnostic(diag: Diagnostic) -> lsp.Diagnostic:
         message=_compose_message(diag),
         severity=_SEVERITY_MAP[diag.severity],
         code=diag.code,
-        code_description=(
-            lsp.CodeDescription(href=diag.doc_url) if diag.doc_url else None
-        ),
+        code_description=(lsp.CodeDescription(href=diag.doc_url) if diag.doc_url else None),
         source="contextos",
     )
 

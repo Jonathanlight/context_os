@@ -22,6 +22,7 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -30,7 +31,6 @@ jobs:
   publish:
     name: Publish VSCode extension
     runs-on: ubuntu-latest
-    environment: vscode
     defaults:
       run:
         working-directory: extensions/vscode
@@ -51,11 +51,16 @@ jobs:
           GITHUB_REF_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
-          # npm version <semver> rewrites package.json and creates a
-          # tag commit by default; --no-git-tag-version skips the
-          # local commit because we're already on a tag.
-          npm version "$TAG_VERSION" --no-git-tag-version --allow-same-version
+          # On tag pushes, ref_name is the tag (e.g. v4.0.0); strip the
+          # leading v. On manual workflow_dispatch, ref_name might be a
+          # branch -- in that case we leave the version untouched.
+          REF="$GITHUB_REF_NAME"
+          if [[ "$REF" =~ ^v[0-9] ]]; then
+            TAG_VERSION="${REF#v}"
+            npm version "$TAG_VERSION" --no-git-tag-version --allow-same-version
+          else
+            echo "::notice ::Not a v* tag ($REF); keeping package.json version as-is."
+          fi
 
       - name: Build extension
         run: npm run build
@@ -64,17 +69,20 @@ jobs:
         run: test -f dist/extension.js
 
       - name: Detect publish mode
+        id: detect
         env:
           HAS_PAT: ${{ secrets.VSCE_PAT != '' }}
         run: |
           if [ "$HAS_PAT" = "true" ]; then
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
             echo "::notice ::Publishing to VSCode Marketplace (VSCE_PAT secret present)."
           else
-            echo "::notice ::Skipping VSCode publish (VSCE_PAT not set). Build verified; tag the next release after configuring the secret."
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+            echo "::notice ::Skipping VSCode publish (VSCE_PAT not set). Build verified."
           fi
 
       - name: Publish to Marketplace
-        if: ${{ secrets.VSCE_PAT != '' }}
+        if: steps.detect.outputs.should_publish == 'true'
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |

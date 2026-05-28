@@ -28,10 +28,16 @@ class TestCliRenderer:
         out = render_eval_cli(
             _result(
                 EvalCaseResult(
-                    case_name="case-a", expected="x", actual="x", passed=True,
+                    case_name="case-a",
+                    expected="x",
+                    actual="x",
+                    passed=True,
                 ),
                 EvalCaseResult(
-                    case_name="case-b", expected="y", actual="y", passed=True,
+                    case_name="case-b",
+                    expected="y",
+                    actual="y",
+                    passed=True,
                 ),
             )
         )

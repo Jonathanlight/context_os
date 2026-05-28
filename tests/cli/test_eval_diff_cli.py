@@ -93,9 +93,7 @@ class TestEvalDiffJsonOutput:
         current = tmp_path / "current.json"
         _write_run(baseline, cases=[("a", True)])
         _write_run(current, cases=[("a", False)])
-        result = runner.invoke(
-            app, ["eval-diff", str(baseline), str(current), "--json"]
-        )
+        result = runner.invoke(app, ["eval-diff", str(baseline), str(current), "--json"])
         # exit_code=1 because of the regression — but stdout still
         # contains valid JSON the CI step can consume.
         assert result.exit_code == 1

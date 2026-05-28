@@ -3,7 +3,7 @@ requires = ["hatchling>=1.21"]
 build-backend = "hatchling.build"
 
 [project]
-name = "context-os"
+name = "context-os-ctx"
 version = "4.0.0"
 description = "The Operating System for LLM Context — analyze, generate, and compare LLM context artifacts."
 authors = [{ name = "Jonathan KABLAN" }]

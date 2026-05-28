@@ -39,11 +39,20 @@ jobs:
       - name: Build site
         run: mkdocs build --strict --site-dir _site
 
+      # The deploy steps below require GitHub Pages to be enabled on
+      # the repo (Settings -> Pages -> Source = GitHub Actions). Until
+      # that one-time setup is done, the configure-pages step returns
+      # 404 and we degrade to "build verified, deploy skipped" rather
+      # than failing the whole workflow on every push.
       - uses: actions/configure-pages@v5
+        id: configure
+        continue-on-error: true
 
       - uses: actions/upload-pages-artifact@v3
+        if: steps.configure.outcome == 'success'
         with:
           path: _site
 
       - id: deployment
+        if: steps.configure.outcome == 'success'
         uses: actions/deploy-pages@v4

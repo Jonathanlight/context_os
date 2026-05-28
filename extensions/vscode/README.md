@@ -9,7 +9,7 @@ quick-fix code actions the `ctx` CLI does — just inline as you type.
 The extension drives the Python `ctx lsp` server. Install both:
 
 ```bash
-pipx install context-os[lsp]
+pipx install context-os-ctx[lsp]
 ```
 
 Then install this extension from the VSCode marketplace (or via the

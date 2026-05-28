@@ -32,17 +32,13 @@ class TestRunnerHappyPath:
         provider = MockRagProvider(
             {"vacation policy?": ["docs/policies/vacation.md", "docs/handbook.md"]}
         )
-        suite = _suite(
-            [_case("a", "vacation policy?", ["docs/policies/vacation.md"])]
-        )
+        suite = _suite([_case("a", "vacation policy?", ["docs/policies/vacation.md"])])
         result = RagEvalRunner(provider).run(suite)
         assert result.pass_count == 1
         assert result.fail_count == 0
 
     def test_expected_not_in_retrieved_fails(self) -> None:
-        provider = MockRagProvider(
-            {"q": ["docs/wrong.md", "docs/another-wrong.md"]}
-        )
+        provider = MockRagProvider({"q": ["docs/wrong.md", "docs/another-wrong.md"]})
         suite = _suite([_case("a", "q", ["docs/right.md"])])
         result = RagEvalRunner(provider).run(suite)
         assert result.pass_count == 0
@@ -51,9 +47,7 @@ class TestRunnerHappyPath:
     def test_or_semantics_on_expected_list(self) -> None:
         # Any one match counts as a pass.
         provider = MockRagProvider({"q": ["docs/b.md"]})
-        suite = _suite(
-            [_case("a", "q", ["docs/a.md", "docs/b.md", "docs/c.md"])]
-        )
+        suite = _suite([_case("a", "q", ["docs/a.md", "docs/b.md", "docs/c.md"])])
         result = RagEvalRunner(provider).run(suite)
         assert result.pass_count == 1
 

@@ -49,9 +49,7 @@ class TestEvalHtmlCli:
     def test_json_and_html_mutually_exclusive(self, tmp_path: Path) -> None:
         suite = tmp_path / "skill.eval.toml"
         suite.write_text(_SKILL_SUITE, encoding="utf-8")
-        result = runner.invoke(
-            app, ["eval", str(suite), "--dry-run", "--html", "--json"]
-        )
+        result = runner.invoke(app, ["eval", str(suite), "--dry-run", "--html", "--json"])
         assert result.exit_code == 1
         assert "mutually exclusive" in result.output
 

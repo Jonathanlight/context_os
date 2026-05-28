@@ -91,9 +91,7 @@ class TestDryRunRag:
 
 
 class TestLiveModeRequiresFlags:
-    def test_skill_eval_without_dry_run_or_skills_dir_fails(
-        self, tmp_path: Path
-    ) -> None:
+    def test_skill_eval_without_dry_run_or_skills_dir_fails(self, tmp_path: Path) -> None:
         suite = tmp_path / "skill.eval.toml"
         suite.write_text(_SKILL_SUITE, encoding="utf-8")
         result = runner.invoke(app, ["eval", str(suite)])

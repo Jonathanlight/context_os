@@ -54,7 +54,7 @@ def _check_freshness_policy(rag: RagDocument) -> Iterable[Diagnostic]:
         severity=R003_SEVERITY,
         message="RAG corpus has no `freshness_policy` — stale documents will never be marked",
         suggestion=(
-            "set `freshness_policy = \"30d\"` (or another compact d/w/m/y "
+            'set `freshness_policy = "30d"` (or another compact d/w/m/y '
             "value) under [rag] so the indexer can flag stale content"
         ),
         doc_url=R003_DOC_URL,
@@ -78,10 +78,7 @@ def _check_embedding_model(rag: RagDocument) -> Iterable[Diagnostic]:
             "RAG corpus has no `embedding_model` — downstream indexers "
             "cannot pick one deterministically"
         ),
-        suggestion=(
-            'declare `embedding_model = "voyage-3"` (or your chosen vendor) '
-            "under [rag]"
-        ),
+        suggestion=('declare `embedding_model = "voyage-3"` (or your chosen vendor) under [rag]'),
         doc_url=R004_DOC_URL,
     )
 

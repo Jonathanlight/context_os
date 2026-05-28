@@ -178,30 +178,22 @@ class TestEmptyRun:
 
 class TestHtmlEscape:
     def test_case_name_with_html_escaped(self) -> None:
-        out = render_eval_html(
-            _result(_case("<script>alert(1)</script>", passed=True))
-        )
+        out = render_eval_html(_result(_case("<script>alert(1)</script>", passed=True)))
         assert "<script>alert(1)" not in out
         assert "&lt;script&gt;" in out
 
     def test_expected_value_escaped(self) -> None:
-        out = render_eval_html(
-            _result(_case("a", passed=False, expected='"><img src=x>'))
-        )
+        out = render_eval_html(_result(_case("a", passed=False, expected='"><img src=x>')))
         assert "<img" not in out
         assert "&quot;" in out
 
     def test_actual_value_escaped(self) -> None:
-        out = render_eval_html(
-            _result(_case("a", passed=False, actual="<b>bold</b>"))
-        )
+        out = render_eval_html(_result(_case("a", passed=False, actual="<b>bold</b>")))
         assert "<b>bold</b>" not in out
         assert "&lt;b&gt;bold" in out
 
     def test_error_field_escaped(self) -> None:
-        out = render_eval_html(
-            _result(_case("a", passed=False, error="<x>"))
-        )
+        out = render_eval_html(_result(_case("a", passed=False, error="<x>")))
         assert "<x>" not in out
         assert "&lt;x&gt;" in out
 

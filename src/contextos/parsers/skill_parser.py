@@ -211,16 +211,14 @@ def _build_skill_document(data: dict[str, Any], *, source: str) -> SkillDocument
         return SkillDocument.model_validate(data)
     except ValidationError as exc:
         details = "; ".join(
-            f"{'.'.join(str(part) for part in err['loc'])}: {err['msg']}"
-            for err in exc.errors()
+            f"{'.'.join(str(part) for part in err['loc'])}: {err['msg']}" for err in exc.errors()
         )
         raise ContextOSParseError(
             f"SKILL.md frontmatter failed validation: {details}",
             source=source,
             position=Position(file=source, line=2, column=1),
             suggestion=(
-                "consult docs/specs/SPEC.md §1.3 for the complete "
-                "field list and required types"
+                "consult docs/specs/SPEC.md §1.3 for the complete field list and required types"
             ),
         ) from exc
 
