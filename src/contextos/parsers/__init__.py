@@ -1,8 +1,8 @@
 """Parsers for ContextOS source formats.
 
-Milestone 1.2a ships the ``.ctx`` parser (the canonical TOML source). The
-Markdown parser for existing agent files (CLAUDE.md / AGENTS.md / …) lands
-in Milestone 1.4. RAG (Phase 6) and Skill (Phase 5) parsers come later.
+Milestone 1.2a shipped the ``.ctx`` parser; Milestone 1.4 added the
+Markdown parser for existing agent files. Phase 5.2 wires up the
+``SKILL.md`` parser. Phase 6 will add the RAG parser.
 """
 
 from __future__ import annotations
@@ -18,6 +18,10 @@ from contextos.parsers.markdown_parser import (
     parse_markdown_file,
     parse_markdown_string,
 )
+from contextos.parsers.skill_parser import (
+    parse_skill_file,
+    parse_skill_string,
+)
 
 __all__ = [
     "SUPPORTED_TARGETS",
@@ -27,4 +31,6 @@ __all__ = [
     "parse_ctx_string",
     "parse_markdown_file",
     "parse_markdown_string",
+    "parse_skill_file",
+    "parse_skill_string",
 ]
