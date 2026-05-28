@@ -37,6 +37,7 @@ dev = [
     "mypy>=1.10",
     "pre-commit>=3.7",
     "pygls>=2.0",
+    "anthropic>=0.40",
 ]
 docs = [
     "mkdocs>=1.5",
@@ -44,6 +45,9 @@ docs = [
 ]
 lsp = [
     "pygls>=2.0",
+]
+eval = [
+    "anthropic>=0.40",
 ]
 
 [project.scripts]
