@@ -39,13 +39,15 @@ from contextos.ast.agent import (
 )
 from contextos.ast.common import Position, Severity
 from contextos.ast.document import Document
+from contextos.ast.rag import DocumentEntry, RagConfig, RagDocument
 from contextos.ast.skill import SkillDocument
 
-SUPPORTED_ARTIFACTS = frozenset({"context", "skills"})
+SUPPORTED_ARTIFACTS = frozenset({"context", "skills", "rag"})
 """Artifact families this parser understands.
 
-Phase 5.5 added ``"skills"`` (a ``.ctx`` source may now declare a
-single ``[[skill]]`` block). Phase 6 will widen this to ``"rag"``.
+Phase 5.5 added ``"skills"``; Phase 6.2 adds ``"rag"`` so a single
+``.ctx`` source can declare a RAG corpus (one ``[rag]`` table plus
+one or more ``[[document]]`` entries).
 """
 
 KNOWN_ROOT_FIELDS = frozenset(
@@ -64,6 +66,8 @@ KNOWN_ROOT_FIELDS = frozenset(
         "rules",
         "forbidden_patterns",
         "skill",
+        "rag",
+        "document",
     }
 )
 """Every root-level key a ``.ctx`` source may carry in the context family.
@@ -174,6 +178,13 @@ def parse_ctx_string(content: str, source: str = _STRING_SOURCE) -> Document:
             source=source,
         )
 
+    if "rag" in artifacts_raw:
+        return _build_rag_root(
+            data,
+            project=project,
+            source=source,
+        )
+
     rule_lines = _scan_rule_positions(content)
     agent = _build_agent_document(data, source=source, rule_lines=rule_lines)
 
@@ -239,6 +250,84 @@ def _build_skill_root(
             authors=_string_list(data.get("authors", []), field="authors", source=source),
             version=str(data.get("version", "0.1.0")),
             skill=skill,
+        )
+    except ValidationError as exc:
+        raise ContextOSParseError(f"document failed validation: {exc}", source=source) from exc
+
+
+def _build_rag_root(
+    data: dict[str, Any],
+    *,
+    project: str,
+    source: str,
+) -> Document:
+    """Build a Document(type='rag') from a ``.ctx`` carrying ``[rag]``.
+
+    SPEC §1.4 prescribes one ``[rag]`` table (the pipeline config) and
+    one or more ``[[document]]`` array-of-tables entries (the sources
+    to index). A RAG ``.ctx`` without either is structurally complete
+    but useless; we surface that as a parse error so the author
+    notices at compile time.
+    """
+    rag_table = data.get("rag")
+    if not isinstance(rag_table, dict):
+        raise ContextOSParseError(
+            "artifacts=['rag'] requires a [rag] table",
+            source=source,
+            suggestion=(
+                "add a [rag] table with at least chunking_strategy and "
+                "chunk_target_tokens"
+            ),
+        )
+
+    document_blocks = data.get("document", [])
+    if not isinstance(document_blocks, list):
+        raise ContextOSParseError(
+            "[[document]] must be a TOML array-of-tables",
+            source=source,
+            suggestion="declare each source as `[[document]]` not `[document]`",
+        )
+    if not document_blocks:
+        raise ContextOSParseError(
+            "RAG corpus has no [[document]] entries — nothing would be indexed",
+            source=source,
+            suggestion=(
+                "add at least one [[document]] block declaring a source glob"
+            ),
+        )
+
+    try:
+        config = RagConfig.model_validate(rag_table)
+    except ValidationError as exc:
+        raise ContextOSParseError(
+            f"[rag] failed validation: {exc}",
+            source=source,
+        ) from exc
+
+    entries: list[DocumentEntry] = []
+    for index, block in enumerate(document_blocks):
+        if not isinstance(block, dict):
+            raise ContextOSParseError(
+                f"[[document]] block #{index + 1} must be a TOML table",
+                source=source,
+            )
+        try:
+            entries.append(DocumentEntry.model_validate(block))
+        except ValidationError as exc:
+            raise ContextOSParseError(
+                f"[[document]] block #{index + 1} failed validation: {exc}",
+                source=source,
+            ) from exc
+
+    try:
+        return Document(
+            project=project,
+            ctx_version=str(data.get("ctx_version", "0.3")),
+            type="rag",
+            languages=_string_list(data.get("languages", []), field="languages", source=source),
+            authors=_string_list(data.get("authors", []), field="authors", source=source),
+            version=str(data.get("version", "0.1.0")),
+            rag=RagDocument(config=config, documents=entries),
         )
     except ValidationError as exc:
         raise ContextOSParseError(f"document failed validation: {exc}", source=source) from exc
@@ -486,7 +575,7 @@ def dump_ctx_string(doc: Document) -> str:
     td["project"] = doc.project
     if doc.ctx_version != "0.3":
         td["ctx_version"] = doc.ctx_version
-    td["artifacts"] = ["skills"] if doc.type == "skill" else ["context"]
+    td["artifacts"] = _artifacts_for_type(doc.type)
     if doc.languages:
         td["languages"] = list(doc.languages)
     if doc.authors:
@@ -498,10 +587,28 @@ def dump_ctx_string(doc: Document) -> str:
         td["skill"] = _dump_skill_aot(doc.skill)
         return tomlkit.dumps(td)
 
+    if doc.type == "rag" and doc.rag is not None:
+        _dump_rag_into(td, doc.rag)
+        return tomlkit.dumps(td)
+
     if doc.agent is not None:
         _dump_agent_into(td, doc.agent)
 
     return tomlkit.dumps(td)
+
+
+def _artifacts_for_type(doc_type: str) -> list[str]:
+    """Map :attr:`Document.type` to the canonical ``artifacts`` list.
+
+    Inverse of the dispatch in :func:`parse_ctx_string`. Keeping the
+    mapping in one place means a future family addition is a one-line
+    table change.
+    """
+    return {
+        "agent": ["context"],
+        "skill": ["skills"],
+        "rag": ["rag"],
+    }[doc_type]
 
 
 def _dump_agent_into(td: Any, agent: AgentDocument) -> None:
@@ -582,6 +689,64 @@ def _dump_skill_aot(skill: SkillDocument) -> Any:
         table["tags"] = list(skill.tags)
     aot.append(table)
     return aot
+
+
+def _dump_rag_into(td: Any, rag: RagDocument) -> None:
+    """Populate ``td`` with the RagDocument's [rag] table and [[document]] AoT.
+
+    The config fields land in a non-default-aware way for the always-
+    present chunk and top-k numbers: every Pydantic default is emitted
+    so the dumped TOML is self-describing rather than depending on a
+    future SPEC default that may shift.
+    """
+    td["rag"] = _dump_rag_config(rag.config)
+    if rag.documents:
+        doc_aot = tomlkit.aot()
+        for entry in rag.documents:
+            doc_aot.append(_dump_document_entry(entry))
+        td["document"] = doc_aot
+
+
+def _dump_rag_config(cfg: RagConfig) -> Any:
+    table = tomlkit.table()
+    table["chunking_strategy"] = cfg.chunking_strategy
+    table["chunk_target_tokens"] = cfg.chunk_target_tokens
+    table["chunk_overlap_tokens"] = cfg.chunk_overlap_tokens
+    table["chunk_min_tokens"] = cfg.chunk_min_tokens
+    table["chunk_max_tokens"] = cfg.chunk_max_tokens
+    if cfg.embedding_model is not None:
+        table["embedding_model"] = cfg.embedding_model
+    if cfg.embedding_dimensions is not None:
+        table["embedding_dimensions"] = cfg.embedding_dimensions
+    if cfg.vector_store is not None:
+        table["vector_store"] = cfg.vector_store
+    if cfg.reranker is not None:
+        table["reranker"] = cfg.reranker
+    table["retrieval_top_k"] = cfg.retrieval_top_k
+    table["reranking_top_k"] = cfg.reranking_top_k
+    if cfg.freshness_policy is not None:
+        table["freshness_policy"] = cfg.freshness_policy
+    if cfg.language_default is not None:
+        table["language_default"] = cfg.language_default
+    return table
+
+
+def _dump_document_entry(entry: DocumentEntry) -> Any:
+    table = tomlkit.table()
+    table["source"] = entry.source
+    if entry.tags:
+        table["tags"] = list(entry.tags)
+    if entry.freshness_required is not None:
+        table["freshness_required"] = entry.freshness_required
+    if entry.chunking_override is not None:
+        table["chunking_override"] = entry.chunking_override
+    if entry.required_anchors:
+        table["required_anchors"] = list(entry.required_anchors)
+    if entry.max_size_kb is not None:
+        table["max_size_kb"] = entry.max_size_kb
+    if entry.language is not None:
+        table["language"] = entry.language
+    return table
 
 
 def _dump_optional_table(fields: dict[str, Any]) -> Any:

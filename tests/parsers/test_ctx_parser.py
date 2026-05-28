@@ -168,10 +168,10 @@ class TestParseErrors:
             parse_ctx_string('project = "X"\nartifacts = []')
 
     def test_unsupported_artifact_is_reported(self) -> None:
-        # Phase 5.5 widened SUPPORTED_ARTIFACTS to include "skills"; "rag"
-        # remains rejected until Phase 6.
+        # Phase 6.2 widened SUPPORTED_ARTIFACTS to {context, skills, rag};
+        # only the as-yet-unbuilt "multi" family is still rejected.
         with pytest.raises(ContextOSParseError, match="unsupported artifact"):
-            parse_ctx_string('project = "X"\nartifacts = ["context", "rag"]')
+            parse_ctx_string('project = "X"\nartifacts = ["context", "multi"]')
 
     def test_rules_with_unknown_severity_is_reported(self) -> None:
         bad = textwrap.dedent(
