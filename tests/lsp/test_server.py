@@ -61,8 +61,19 @@ _GOOD_SKILL = textwrap.dedent(
 
 @pytest.fixture
 def server_with_capture() -> tuple[Any, list[lsp.PublishDiagnosticsParams]]:
-    """Return the server plus a list that captures every publish call."""
+    """Return the server plus a list that captures every publish call.
+
+    The completion / hover handlers need a workspace to fetch document
+    text via ``server.workspace.get_text_document(...)``. pygls only
+    initializes the workspace on the ``initialize`` request, which we
+    don't simulate here; instead, we attach a minimal ``Workspace``
+    directly to the protocol so the in-process tests can drive the
+    handlers without a JSON-RPC roundtrip.
+    """
+    from pygls.workspace import Workspace  # noqa: PLC0415 — pygls is an optional dep
+
     server = build_server()
+    server.protocol._workspace = Workspace(root_uri=None)
     captured: list[lsp.PublishDiagnosticsParams] = []
 
     def _publish(params: lsp.PublishDiagnosticsParams) -> None:
@@ -168,3 +179,75 @@ class TestUnknownFile:
         )
         assert len(captured) == 1
         assert captured[0].diagnostics == []
+
+
+def _seed_document(server: Any, uri: str, text: str) -> None:
+    """Put a document directly into the LSP workspace.
+
+    The in-process tests don't go through the JSON-RPC layer that
+    triggers pygls's builtin didOpen handler (which would normally
+    call ``workspace.put_text_document``). Registering the document
+    here so subsequent completion / hover handlers find it via
+    ``server.workspace.get_text_document(...)``.
+    """
+    server.workspace.put_text_document(
+        lsp.TextDocumentItem(uri=uri, language_id="toml", version=1, text=text)
+    )
+
+
+class TestCompletionWiring:
+    """The completion handler should plumb through to compute_completions."""
+
+    def test_completion_returns_top_level_keys_on_empty_ctx(
+        self,
+        server_with_capture: tuple[Any, list[lsp.PublishDiagnosticsParams]],
+    ) -> None:
+        server, _ = server_with_capture
+        _seed_document(server, "file:///tmp/x.ctx", "")
+        completion_handler = _handler(server, lsp.TEXT_DOCUMENT_COMPLETION)
+        result = completion_handler(
+            lsp.CompletionParams(
+                text_document=lsp.TextDocumentIdentifier(uri="file:///tmp/x.ctx"),
+                position=lsp.Position(line=0, character=0),
+            )
+        )
+        labels = [item.label for item in result.items]
+        assert "project" in labels
+        assert "artifacts" in labels
+
+
+class TestHoverWiring:
+    """The hover handler should return a Hover for rule codes."""
+
+    def test_hover_on_rule_code(
+        self,
+        server_with_capture: tuple[Any, list[lsp.PublishDiagnosticsParams]],
+    ) -> None:
+        server, _ = server_with_capture
+        text = "# This file references A001 and S005.\n"
+        _seed_document(server, "file:///tmp/note.ctx", text)
+        hover_handler = _handler(server, lsp.TEXT_DOCUMENT_HOVER)
+        result = hover_handler(
+            lsp.HoverParams(
+                text_document=lsp.TextDocumentIdentifier(uri="file:///tmp/note.ctx"),
+                position=lsp.Position(line=0, character=24),
+            )
+        )
+        assert result is not None
+        assert isinstance(result.contents, lsp.MarkupContent)
+        assert "A001" in result.contents.value
+
+    def test_hover_off_token_returns_none(
+        self,
+        server_with_capture: tuple[Any, list[lsp.PublishDiagnosticsParams]],
+    ) -> None:
+        server, _ = server_with_capture
+        _seed_document(server, "file:///tmp/plain.ctx", "hello world\n")
+        hover_handler = _handler(server, lsp.TEXT_DOCUMENT_HOVER)
+        result = hover_handler(
+            lsp.HoverParams(
+                text_document=lsp.TextDocumentIdentifier(uri="file:///tmp/plain.ctx"),
+                position=lsp.Position(line=0, character=2),
+            )
+        )
+        assert result is None
