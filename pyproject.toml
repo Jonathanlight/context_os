@@ -94,6 +94,13 @@ ignore = ["PLR0913"]
 # 100-char line cap; reformatting them obscures the visual layout.
 "src/contextos/audit/renderer_html.py" = ["E501"]
 "src/contextos/eval/renderer_html.py" = ["E501"]
+# The scaffold registry is a long table of literal rule titles /
+# rationales; wrapping the lines breaks ``ctx create --list-languages``
+# readability without helping reviewers. PLR0911 fires on the detector's
+# orchestrator that fans out per-ecosystem -- the dispatch table is the
+# clearest possible form.
+"src/contextos/scaffold/templates.py" = ["E501"]
+"src/contextos/scaffold/detector.py" = ["PLR0911"]
 
 [tool.ruff.format]
 quote-style = "double"
