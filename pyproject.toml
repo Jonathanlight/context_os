@@ -92,7 +92,8 @@ ignore = ["PLR0913"]
 "tests/**/*" = ["PLR2004", "A005"]
 # Inline CSS / JS strings inside HTML renderers regularly exceed the
 # 100-char line cap; reformatting them obscures the visual layout.
-"src/contextos/**/renderer_html.py" = ["E501"]
+"src/contextos/audit/renderer_html.py" = ["E501"]
+"src/contextos/eval/renderer_html.py" = ["E501"]
 
 [tool.ruff.format]
 quote-style = "double"

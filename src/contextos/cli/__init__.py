@@ -531,7 +531,20 @@ EvalSuiteFile = Annotated[
     typer.Argument(exists=True, dir_okay=False, readable=True, help=_EVAL_SUITE_HELP),
 ]
 EvalDryRun = Annotated[bool, typer.Option("--dry-run", help=_EVAL_DRY_RUN_HELP)]
-EvalJson = Annotated[bool, typer.Option("--json", help="Emit JSON instead of human-readable text.")]
+EvalJson = Annotated[
+    bool,
+    typer.Option("--json", help="Emit JSON instead of human-readable text."),
+]
+EvalHtml = Annotated[
+    bool,
+    typer.Option(
+        "--html",
+        help=(
+            "Render a self-contained HTML report. Pair with --output to "
+            "write to a file."
+        ),
+    ),
+]
 EvalOutput = Annotated[
     Path | None,
     typer.Option("--output", "-o", help="Write the rendered output to this path."),
@@ -555,6 +568,7 @@ def eval_cmd(
     suite_file: EvalSuiteFile,
     dry_run: EvalDryRun = False,
     json_output: EvalJson = False,
+    html_output: EvalHtml = False,
     output: EvalOutput = None,
     skills_dir: EvalSkillsDir = None,
     rag_chunks: EvalRagChunks = None,
@@ -600,7 +614,14 @@ def eval_cmd(
         render_eval_cli,
         render_eval_json,
     )
+    from contextos.eval.renderer_html import (  # noqa: PLC0415 — lazy by design
+        render_eval_html,
+    )
     from contextos.parsers import parse_eval_file  # noqa: PLC0415 — heavy imports near use
+
+    if json_output and html_output:
+        typer.echo("--json and --html are mutually exclusive", err=True)
+        raise typer.Exit(code=1)
 
     try:
         suite = parse_eval_file(suite_file)
@@ -633,7 +654,12 @@ def eval_cmd(
         typer.echo(f"unsupported suite target: {suite.target}", err=True)
         raise typer.Exit(code=1)
 
-    rendered = render_eval_json(result) if json_output else render_eval_cli(result)
+    if json_output:
+        rendered = render_eval_json(result)
+    elif html_output:
+        rendered = render_eval_html(result)
+    else:
+        rendered = render_eval_cli(result)
     _emit_payload(rendered, output=output)
 
     if result.fail_count > 0:
