@@ -1,9 +1,9 @@
 """Common AST for ContextOS — shared types and family-specific submodels.
 
-Phase 1 (Milestone 1.1) implements the **context** family only: Identity,
-Stack, Style, Tools, Rule, AgentDocument, and the root Document. The
-``Document.type`` literal will widen in Phase 5 (skills) and Phase 6 (RAG)
-to add ``"skill"``, ``"rag"``, and ``"multi"``.
+Phase 1 shipped the ``agent`` family (Identity, Stack, Style, Tools, Rule,
+AgentDocument). Phase 5.1 adds the ``skill`` family (SkillDocument).
+The ``Document.type`` literal widens family-by-family — ``"rag"`` and
+``"multi"`` land in Phase 6.
 """
 
 from __future__ import annotations
@@ -17,16 +17,27 @@ from contextos.ast.agent import (
     Tools,
 )
 from contextos.ast.common import Position, ProseBlock, Severity
-from contextos.ast.document import Document
+from contextos.ast.document import Document, DocumentType
+from contextos.ast.skill import (
+    DESCRIPTION_MAX_CHARS,
+    NAME_PATTERN,
+    ExpectedOutputFormat,
+    SkillDocument,
+)
 
 __all__ = [
+    "DESCRIPTION_MAX_CHARS",
+    "NAME_PATTERN",
     "AgentDocument",
     "Document",
+    "DocumentType",
+    "ExpectedOutputFormat",
     "Identity",
     "Position",
     "ProseBlock",
     "Rule",
     "Severity",
+    "SkillDocument",
     "Stack",
     "Style",
     "Tools",

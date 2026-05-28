@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from contextos.ast.agent import AgentDocument, Identity, Rule
 from contextos.ast.common import Severity
 from contextos.ast.document import CTX_VERSION, Document
+from contextos.ast.skill import SkillDocument
 
 
 class TestDocument:
@@ -47,15 +48,38 @@ class TestDocument:
             Document(project="MyApp", type="agent", agent=None)
 
     def test_rejects_unknown_type(self) -> None:
+        # Phase 6 will widen the literal to admit "rag"; until then it must reject.
         with pytest.raises(ValidationError):
-            Document(project="MyApp", type="skill", agent=AgentDocument())
+            Document.model_validate(
+                {
+                    "project": "MyApp",
+                    "type": "rag",
+                    "agent": {},
+                }
+            )
+
+    def test_agent_type_rejects_stray_skill_payload(self) -> None:
+        skill = SkillDocument(
+            name="pdf-extract",
+            title="t",
+            description="Extract text from PDFs when the user asks.",
+        )
+        with pytest.raises(ValidationError, match=r"must not carry a skill payload"):
+            Document(
+                project="X",
+                type="agent",
+                agent=AgentDocument(),
+                skill=skill,
+            )
 
     def test_rejects_unknown_field(self) -> None:
         with pytest.raises(ValidationError):
-            Document(
-                project="MyApp",
-                agent=AgentDocument(),
-                tags=["x"],  # type: ignore[call-arg]
+            Document.model_validate(
+                {
+                    "project": "MyApp",
+                    "agent": {},
+                    "tags": ["x"],
+                }
             )
 
     def test_round_trips_via_json(self) -> None:
