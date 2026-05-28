@@ -42,6 +42,7 @@ from contextos.emitters import (
     emit_codex_markdown,
     emit_copilot_instructions,
     emit_cursor_mdc,
+    emit_rag_manifest,
     emit_skill_markdown,
     emit_windsurfrules,
 )
@@ -64,7 +65,8 @@ app = typer.Typer(
 
 # Compilation targets supported by `ctx compile`. Phase 3 wired the agent
 # fleet (claude_code / codex / cursor / copilot / cline / windsurf);
-# Phase 5.5 adds the anthropic_skill target for SKILL.md.
+# Phase 5.5 added the anthropic_skill target for SKILL.md;
+# Phase 6.5 adds the rag_manifest target for rag.manifest.json.
 _COMPILE_TARGETS = (
     "claude_code",
     "codex",
@@ -73,6 +75,7 @@ _COMPILE_TARGETS = (
     "cline",
     "windsurf",
     "anthropic_skill",
+    "rag_manifest",
 )
 _TARGET_FILENAMES: dict[str, str] = {
     "claude_code": "CLAUDE.md",
@@ -82,6 +85,7 @@ _TARGET_FILENAMES: dict[str, str] = {
     "cline": ".clinerules",
     "windsurf": ".windsurfrules",
     "anthropic_skill": "SKILL.md",
+    "rag_manifest": "rag.manifest.json",
 }
 
 _SKILL_TARGET = "anthropic_skill"
@@ -416,6 +420,7 @@ _EMITTERS: dict[str, Callable[[Document], str]] = {
     "cline": emit_clinerules,
     "windsurf": emit_windsurfrules,
     "anthropic_skill": emit_skill_markdown,
+    "rag_manifest": emit_rag_manifest,
 }
 
 

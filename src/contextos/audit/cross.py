@@ -64,6 +64,9 @@ def audit_project(project: ProjectInferred) -> AuditReport:
     for skill_entry in project.skill_files:
         bag = lint_document(skill_entry.document, source=str(skill_entry.path))
         per_file[str(skill_entry.path)] = bag.sorted()
+    for rag_entry in project.rag_files:
+        bag = lint_document(rag_entry.document, source=str(rag_entry.path))
+        per_file[str(rag_entry.path)] = bag.sorted()
 
     cross_artifact = list(_check_xa001(project.agent_files))
 

@@ -40,6 +40,21 @@ class SkillFile(BaseModel):
     document: Document
 
 
+class RagFile(BaseModel):
+    """One ``.ctx`` file declaring ``artifacts=['rag']`` the scanner parsed.
+
+    Same shape as :class:`AgentFile` / :class:`SkillFile`; the parsed
+    Document carries ``type='rag'`` and the embedded
+    :class:`RagDocument` payload.
+    """
+
+    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
+
+    path: Path
+    target: str
+    document: Document
+
+
 class SkippedFile(BaseModel):
     """A recognized artifact the scanner cannot yet parse.
 
@@ -67,4 +82,5 @@ class ProjectInferred(BaseModel):
     repo_path: Path
     agent_files: list[AgentFile] = []
     skill_files: list[SkillFile] = []
+    rag_files: list[RagFile] = []
     skipped_files: list[SkippedFile] = []
