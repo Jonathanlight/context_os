@@ -106,3 +106,65 @@ If the workflow fails at the `Publish to PyPI` step:
 A failed publish does **not** roll back the tag. The tag stays on
 GitHub; rerun the workflow after fixing the setup
 (`gh workflow run release.yml --ref vX.Y.Z`).
+
+## VSCode Marketplace
+
+The extension under `extensions/vscode/` ships independently on the
+VSCode Marketplace via `.github/workflows/vscode-publish.yml`, also
+triggered by `v*` tag pushes. The workflow bumps the extension's
+`package.json` to match the tag, builds, and runs `vsce publish` when
+the `VSCE_PAT` secret is present (falls through to a build-only run
+otherwise).
+
+### One-time setup
+
+1. **Create the Marketplace publisher.** Go to
+   <https://aka.ms/vscode-create-publisher> and create one whose ID
+   matches `publisher` in `extensions/vscode/package.json`
+   (currently `jonathanlight`).
+2. **Generate a Personal Access Token.**
+   - Sign in to <https://dev.azure.com/> (Microsoft Azure DevOps).
+   - **User settings → Personal access tokens → New token**.
+   - **Organization**: `All accessible organizations`.
+   - **Scope**: select **Marketplace → Manage**.
+   - Copy the token (you can't view it later).
+3. **Store the PAT on GitHub.**
+   - **Repository → Settings → Secrets and variables → Actions →
+     New repository secret**.
+   - Name: `VSCE_PAT`.
+   - Value: the token from step 2.
+4. (Optional) **Set up the `vscode` environment** under
+   **Settings → Environments → vscode** with a deployment reviewer
+   for first-time human approval.
+
+The next `v*` tag push runs the workflow; the
+`Detect publish mode` step prints
+`Publishing to VSCode Marketplace (VSCE_PAT secret present).` and
+the publish step uploads the `.vsix`.
+
+### Manual escape hatch
+
+When the GitHub Actions path isn't available:
+
+```bash
+cd extensions/vscode
+npm ci
+npm run build
+npx @vscode/vsce publish --pat "$VSCE_PAT_LOCAL"
+```
+
+Same pattern as the PyPI fallback: `$VSCE_PAT_LOCAL` is a token you
+keep in your shell config, **distinct** from the CI-side `VSCE_PAT`
+to avoid cross-contamination.
+
+### When the publish fails
+
+- `ERROR Personal Access Token verification failed` → the PAT is
+  expired or scoped wrong. Regenerate with the Marketplace > Manage
+  scope.
+- `ERROR The Publisher 'X' does not exist` → the publisher in
+  `package.json` does not match the Marketplace publisher you
+  created. Edit `package.json` or create the matching publisher.
+- `ERROR Already exists at this version` → the marketplace already
+  has the same version. Bump `version` in `package.json` (or push
+  a new git tag) before re-running.
