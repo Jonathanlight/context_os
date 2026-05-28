@@ -9,6 +9,83 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet.
 
+## [2.1.0] — 2026-05-28
+
+🛠️ **Editor integration.** ContextOS now ships as a language server
+(`ctx lsp`), a VSCode extension wrapping it, and a composite GitHub
+Action that posts audit reports as sticky PR comments. The 27 lint
+rules and the underlying parsers / analyzers are unchanged — this
+release is purely about getting them where authors actually work.
+
+### Added
+
+#### Phase 7A — Editor integration (PRs #56–#61)
+
+- **LSP server** on pygls 2.x (`src/contextos/lsp/`). Reacts to
+  `didOpen` / `didChange` / `didSave`; dispatches `.ctx` →
+  `parse_ctx_string` (which itself routes by `artifacts` family —
+  agent / skill / rag all work) and `SKILL.md` → `parse_skill_string`.
+  ContextOS Position (1-indexed) ↔ LSP Position (0-indexed)
+  conversion centralized in `diagnostics_adapter`. `ContextOSParseError`
+  surfaces as `E0001` so parse failures shape identically to analyzer
+  diagnostics.
+- **LSP completion** for `.ctx` top-level keys, section names
+  (`[rag]`, `[[skill]]`, `[[document]]`, …), and value enums (severity
+  / chunking strategies / output formats), plus `SKILL.md` YAML
+  frontmatter keys. Value enums and field names derive from the AST
+  Literals so a SPEC change ripples through completion without manual
+  sync.
+- **LSP hover** on any rule code in the file (`A001`, `S005`, `XA001`,
+  …) opens a Markdown blob linking to the docs page. The conservative
+  regex (`^[A-Z]{1,2}\d{3,}$`) covers all 27 shipped codes.
+- **LSP code actions**. Two tiers: an info-only quickfix for every
+  diagnostic with a suggestion (title surfaces in the lightbulb
+  menu), plus a structured fix for **X003** (strip the trailing `?`
+  from rule titles). Future structured fixes layer in via the
+  single-branch dispatcher (F001 / X001 / S005 / C001 are listed in
+  the code-actions module docstring).
+- **`ctx lsp` CLI subcommand**. Lazy `pygls` import with a clear
+  recovery message (`pipx install context-os[lsp]`) when the extras
+  aren't installed.
+- **New optional-dependencies group**: `[lsp]` (currently `pygls>=2.0`).
+  `dev` extras gains `pygls` so the test suite runs.
+- **VSCode extension** at `extensions/vscode/`. TypeScript wrapper
+  spawning `ctx lsp` over stdio. New `contextos-ctx` language ID for
+  `.ctx`; `**/SKILL.md` matched via glob so the user's normal
+  Markdown workflow stays authoritative elsewhere. Settings:
+  `contextos.command`, `contextos.trace.server`. Command:
+  `contextos.restartServer`. CI step compiles the extension on every
+  PR (new `vscode-extension` job in `.github/workflows/ci.yml`).
+- **`contextos/lint-action`** composite GitHub Action at
+  `actions/lint/`. yaml-only: `setup-python` + `pip install` +
+  `ctx audit --json` + `github-script` for the PR comment. **Sticky
+  comment** pattern via hidden HTML marker so re-runs of the same
+  PR update the existing comment in place — no comment spam.
+  Inputs cover `path`, `python-version`, `context-os-spec` (overridable
+  for version pins / editable installs / git URLs), `fail-on-error`,
+  `comment-on-pr`, `github-token`. Outputs `exit-code`,
+  `diagnostic-count`, `audit-json-path`.
+
+### Docs
+
+- New `docs/editor.md` page covering LSP install, VSCode setup,
+  Neovim lspconfig snippet, Helix `languages.toml` config, Sublime
+  LSP config, what-you-get summary, and a troubleshooting table.
+- ROADMAP closes Phase 7A and pencils in Phase 7B (live evaluation).
+
+### Documented limitations
+
+- VSCode Marketplace publication for the extension stays a manual
+  step out of CI (publisher account + `VSCE_PAT` token — same model
+  as the PyPI trusted-publishing flow that gates the v2.0 PyPI
+  publish).
+- `contextos/lint-action` Marketplace listing stays manual until the
+  Action publishing UI is run.
+- `nvim-lspconfig` upstream registration not yet submitted; users
+  configure via the `lspconfig.configs` table for now.
+- Additional structured code-action fixes (F001 / X001 / S005 / C001)
+  enumerated in `code_actions.py` for future PRs.
+
 ## [2.0.0] — 2026-05-28
 
 🚀 **The full trio shipped.** ContextOS v2.0 covers all three families

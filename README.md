@@ -163,19 +163,21 @@ target coverage:
 
 ## Status
 
-🚀 **v1.0.0 shipped.** Phase 1 → Phase 4 deliverables — parser, 15 lint
-rules, 6 target emitters, semantic diff, repo audit, corpus stats, and
-the docs site — are all live. See the
+🚀 **v2.1.0 shipped.** The full agent + skill + RAG trio, plus
+editor integration: LSP server, VSCode extension, and a composite
+GitHub Action. 27 lint rules across seven categories. See the
 [roadmap](docs/specs/ROADMAP.md) for what comes next.
 
-| Phase | What                                          | Status     |
-|-------|-----------------------------------------------|------------|
-| 1     | Parser + AST + Claude emitter                 | ✅ shipped |
-| 2     | 15 lint rules (A / C / F / K / P / X / XA)     | ✅ shipped |
-| 3     | 5 more emitters + diff + audit                | ✅ shipped |
-| 4     | Corpus stats + docs site + v1.0 launch         | ✅ shipped |
-| 5     | Anthropic Skills (`SKILL.md`)                  | ⏳ planned |
-| 6     | RAG corpora                                    | ⏳ planned |
+| Phase | What                                                          | Status     |
+|-------|---------------------------------------------------------------|------------|
+| 1     | Parser + AST + Claude emitter                                 | ✅ shipped |
+| 2     | 15 lint rules (A / C / F / K / P / X / XA)                     | ✅ shipped |
+| 3     | 5 more emitters + diff + audit                                | ✅ shipped |
+| 4     | Corpus stats + docs site + v1.0 launch                         | ✅ shipped |
+| 5     | Anthropic Skills (`SKILL.md`) + 6 skill rules                  | ✅ shipped |
+| 6     | RAG corpora + 6 RAG rules + v2.0 launch                        | ✅ shipped |
+| 7A    | LSP server + VSCode extension + GitHub Action + v2.1 launch    | ✅ shipped |
+| 7B    | Live evaluation (Skills routing + RAG retrieval) + v3.0 launch | ⏳ planned |
 
 ## Supported targets
 
@@ -202,10 +204,34 @@ own walker.
 | `ctx diff`    | Semantic diff of two Documents                        |
 | `ctx audit`   | Walk a repo, lint every file, run cross-artifact rules |
 | `ctx stats`   | Aggregate corpus-wide statistics from an audit        |
+| `ctx lsp`     | Run the language server over stdio (requires `[lsp]` extras) |
 | `ctx --version` | Print version                                       |
 
 Every command has `--json` for machine-readable output and exits 1 only
 when an error-severity diagnostic fires.
+
+## Editor integration
+
+Phase 7A wires ContextOS into your editor. Install the LSP extras
+and the matching client:
+
+```bash
+pipx install context-os[lsp]
+```
+
+- **VSCode** — extension at [`extensions/vscode/`](extensions/vscode);
+  marketplace listing pending.
+- **Neovim / Helix / Sublime** — three-line LSP client configs in
+  [`docs/editor.md`](docs/editor.md).
+- **GitHub CI** — composite Action at [`actions/lint/`](actions/lint):
+  ```yaml
+  - uses: Jonathanlight/context_os/actions/lint@v2.1.0
+  ```
+  posts a sticky audit report as a PR comment.
+
+The 27 lint rules, completion, hover, and quick-fix code actions
+surface identically in every shape — the editor is just an alternate
+window onto the same Python core.
 
 ## Docs
 

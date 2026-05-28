@@ -175,16 +175,89 @@ retrieval, no PDF support.
 `rag.ctx`; the generated manifest is valid JSON consumers can read in
 five lines of Python (`json.load(open("rag.manifest.json"))`).
 
-## Phase 7+ — Post-MVP
+## Phase 7A — Editor integration (✅ shipped)
 
-- Live Skills evaluation (Anthropic API)
-- Live RAG evaluation (eval-set + measured recall)
-- PDF support in RAG
-- Cursor commands, GPT custom instructions
-- LSP server for `.ctx`
-- VSCode extension
-- GitHub Action `contextos/lint-action@v1`
-- Web app on `contextos.dev/app`
+**Goal achieved:** ContextOS speaks LSP. Diagnostics, completion,
+hover, and quick-fix code actions surface inline in any LSP-aware
+editor. CI gets a composite GitHub Action that posts audit reports
+as sticky PR comments.
+
+**Shipped (PRs #56 – #61):**
+
+- LSP server skeleton on pygls 2.x with `ctx lsp` CLI entry point;
+  optional `[lsp]` extras keep CLI-only users at the baseline
+  ~5 MB install. Reuses the existing parsers + analyzers — zero
+  parallel implementation that could drift (PR #56).
+- LSP completion + hover. Top-level `.ctx` keys, section names,
+  value enums (severity / chunking strategies / output formats),
+  SKILL.md frontmatter keys. Hover on rule codes (`A001` … `XA001`)
+  opens a Markdown blob with doc link (PR #57).
+- LSP code actions. Every diagnostic with a suggestion surfaces as
+  a quickfix; X003 ships a structured fix that strips the trailing
+  `?` from rule titles. Future structured fixes (F001 / X001 / S005
+  / C001) layer in via single-branch dispatcher (PR #58).
+- VSCode extension. Thin TypeScript wrapper spawning `ctx lsp`
+  over stdio. New `contextos-ctx` language ID for `.ctx`;
+  `**/SKILL.md` matched by glob so the user's normal Markdown
+  workflow stays intact elsewhere. `contextos.command` setting
+  for virtualenv pinning. CI step compiles the extension on every
+  PR (PR #59).
+- `contextos/lint-action` composite Action. yaml-only — no Docker,
+  no JavaScript runtime. Runs `ctx audit --json` and posts a
+  sticky PR comment via the hidden-marker pattern (one comment
+  per PR, updated in place on re-runs). Inputs cover version
+  pinning, subpath audit, non-blocking mode, custom token (PR #60).
+- Docs (this PR): `docs/editor.md` covering LSP install +
+  configuration for VSCode / Neovim / Helix / Sublime; ROADMAP
+  closed; v2.1.0 release.
+
+**Deferred to Phase 7B (live evaluation):**
+
+- Live Skills evaluation via Anthropic API (was already deferred).
+- Live RAG evaluation via embedding providers (was already deferred).
+
+**Deferred long-tail (no phase planned):**
+
+- Marketplace publication for the VSCode extension (manual
+  publisher account + PAT — same model as PyPI trusted publishing
+  blocks the v2.0 PyPI publish).
+- Marketplace listing for `contextos/lint-action` (manual Action
+  publishing UI).
+- Additional structured code-action fixes (F001 lowercase, X001
+  strip TODO, S005 prepend H1, C001 contradiction rephrase).
+- LSP `textDocument/definition` and `documentSymbol` for jump-to-rule.
+- `nvim-lspconfig` upstream registration.
+
+**DoD met:** ContextOS is consumable as a CLI, as a Python library,
+as a language server, as a VSCode extension, and as a GitHub
+Action. All shapes share the same Python core; a diagnostic that
+fires in one surfaces identically in all.
+
+## Phase 7B — Live evaluation (planned)
+
+**Goal:** move from validating **structure** to validating
+**functionality**. Does the skill actually fire on the right
+prompts? Does RAG retrieval actually find the expected chunks?
+
+Planned deliverables (~6 milestones):
+
+- `.eval.toml` format + AST.
+- Anthropic Skills routing evaluator.
+- RAG retrieval evaluator (numpy cosine on small corpora, no FAISS).
+- `ctx eval` CLI with `--provider` / `--dry-run` / `--sample`.
+- Eval-result diff for CI regression detection.
+- Docs + ROADMAP close for 7B + bump to v3.0.0.
+
+**Anti-goals (unchanged):** no live indexing, no PDF support, no
+fine-tuning loops.
+
+## Phase 8+ — Post-MVP
+
+- PDF support in RAG.
+- Cursor commands, GPT custom instructions.
+- LSP definition / documentSymbol for jump-to-rule.
+- Web app on `contextos.dev/app`.
+- `contextos/scaffold-action` for `ctx compile` in CI.
 
 ---
 
