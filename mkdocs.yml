@@ -94,3 +94,10 @@ nav:
           - P001 personal absolute path: rules/P001.md
           - P002 email in title: rules/P002.md
           - P003 bare URL in title: rules/P003.md
+      - Skill:
+          - S001 missing trigger phrasing: rules/S001.md
+          - S002 description too short: rules/S002.md
+          - S003 description near cap: rules/S003.md
+          - S004 missing example_invocation: rules/S004.md
+          - S005 body H1 mismatch: rules/S005.md
+          - S006 redundant trigger_keywords: rules/S006.md

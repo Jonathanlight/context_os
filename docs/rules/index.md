@@ -13,11 +13,12 @@ suggestion the analyzer prints alongside the diagnostic.
 | **F** | [LLM-friendliness](#llm-friendliness-f) | warning | 3 |
 | **K** | [Completeness](#completeness-k) | warning / info | 3 |
 | **P** | [Platform](#platform-p) | warning | 3 |
+| **S** | [Skill](#skill-s) | warning / info | 6 |
 | **X** | [Anti-pattern](#anti-pattern-x) | warning | 3 |
 | **XA** | Cross-artifact | warning | 1 (in the audit) |
 
-**Phase 2 deliverable** — 15 rules. Phase 5 adds Skills rules (S***);
-Phase 6 adds RAG rules (R***).
+**21 rules shipped** (Phase 2 + Phase 5.4). Phase 6 will add RAG rules
+(R***).
 
 ## Ambiguity (A)
 
@@ -68,6 +69,23 @@ Author-specific or machine-specific state leaking into a shared artifact.
 - [**P002** email address in title](P002.md) — belongs in `author` or
   `links`.
 - [**P003** bare URL in title](P003.md) — belongs in `links`.
+
+## Skill (S)
+
+Phase 5 lint rules for `SKILL.md` files. Two themes: description
+quality (the routing signal) and body / metadata coherence.
+
+- [**S001** description has no trigger phrasing](S001.md) — silent
+  "skill never fires" bug class.
+- [**S002** description is too short](S002.md) — under 50 visible chars.
+- [**S003** description is approaching the hard cap](S003.md) — soft
+  cap 800 / hard cap 1024 (info).
+- [**S004** missing `example_invocation`](S004.md) — concrete trigger
+  sample (info).
+- [**S005** body H1 missing or mismatched](S005.md) — metadata / prose
+  drift (info).
+- [**S006** `trigger_keywords` already in description](S006.md) —
+  redundant keyword list (info).
 
 ## Anti-pattern (X)
 
