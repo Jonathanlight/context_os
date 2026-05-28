@@ -319,27 +319,21 @@ class TestStats:
         assert "no files audited" in result.stdout
 
     def test_stats_finds_corpus(self, tmp_path: Path) -> None:
-        (tmp_path / "CLAUDE.md").write_text(
-            "# Sample\n\n## Rules\n\n- Be concise\n"
-        )
+        (tmp_path / "CLAUDE.md").write_text("# Sample\n\n## Rules\n\n- Be concise\n")
         result = runner.invoke(app, ["stats", str(tmp_path)])
         assert result.exit_code == 0
         assert "files audited:  1" in result.stdout
         assert "top codes:" in result.stdout
 
     def test_stats_json(self, tmp_path: Path) -> None:
-        (tmp_path / "CLAUDE.md").write_text(
-            "# Sample\n\n## Rules\n\n- Use type hints.\n"
-        )
+        (tmp_path / "CLAUDE.md").write_text("# Sample\n\n## Rules\n\n- Use type hints.\n")
         result = runner.invoke(app, ["stats", str(tmp_path), "--json"])
         assert result.exit_code == 0
         payload = json.loads(result.stdout)
         assert payload["files_audited"] == 1
 
     def test_stats_top_n_flag(self, tmp_path: Path) -> None:
-        (tmp_path / "CLAUDE.md").write_text(
-            "# Sample\n\n## Rules\n\n- Be concise\n"
-        )
+        (tmp_path / "CLAUDE.md").write_text("# Sample\n\n## Rules\n\n- Be concise\n")
         result = runner.invoke(app, ["stats", str(tmp_path), "--top", "3"])
         assert result.exit_code == 0
 

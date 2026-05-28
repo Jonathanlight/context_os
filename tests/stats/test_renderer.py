@@ -7,7 +7,7 @@ from pathlib import Path
 
 from contextos.ast.common import Position
 from contextos.audit.cross import AuditReport
-from contextos.diagnostics import DiagSeverity, Diagnostic
+from contextos.diagnostics import Diagnostic, DiagSeverity
 from contextos.stats import compute_stats, render_stats_cli, render_stats_json
 
 
@@ -30,9 +30,7 @@ class TestCliRendering:
         assert "no files audited" in render_stats_cli(stats)
 
     def test_files_audited_count(self) -> None:
-        stats = compute_stats(
-            _report({"f1": [_diag("A001")], "f2": [_diag("A001")]})
-        )
+        stats = compute_stats(_report({"f1": [_diag("A001")], "f2": [_diag("A001")]}))
         out = render_stats_cli(stats)
         assert "files audited:  2" in out
 
@@ -71,9 +69,7 @@ class TestJsonRendering:
         assert payload["top_codes"] == []
 
     def test_full_payload_shape(self) -> None:
-        stats = compute_stats(
-            _report({"/repo/CLAUDE.md": [_diag("A001"), _diag("K002")]})
-        )
+        stats = compute_stats(_report({"/repo/CLAUDE.md": [_diag("A001"), _diag("K002")]}))
         payload = json.loads(render_stats_json(stats))
         assert payload["files_audited"] == 1
         assert payload["total_diagnostics"] == 2

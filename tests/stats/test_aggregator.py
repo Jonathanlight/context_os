@@ -6,7 +6,7 @@ from pathlib import Path
 
 from contextos.ast.common import Position
 from contextos.audit.cross import AuditReport
-from contextos.diagnostics import DiagSeverity, Diagnostic
+from contextos.diagnostics import Diagnostic, DiagSeverity
 from contextos.stats import compute_stats
 
 

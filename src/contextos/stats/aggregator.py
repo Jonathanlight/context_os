@@ -57,9 +57,7 @@ def compute_stats(
     # Ensure every severity bucket is present, even when 0.
     diagnostics_by_severity: dict[str, int] = {
         DiagSeverity.ERROR.value: severity_counter.get(DiagSeverity.ERROR.value, 0),
-        DiagSeverity.WARNING.value: severity_counter.get(
-            DiagSeverity.WARNING.value, 0
-        ),
+        DiagSeverity.WARNING.value: severity_counter.get(DiagSeverity.WARNING.value, 0),
         DiagSeverity.INFO.value: severity_counter.get(DiagSeverity.INFO.value, 0),
     }
 

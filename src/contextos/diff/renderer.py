@@ -25,9 +25,7 @@ def render_diff_cli(diff: DocumentDiff) -> str:
 
     if diff.identity_role_changed is not None:
         role_old, role_new = diff.identity_role_changed
-        parts.extend(
-            ["", "identity:", f"  ~ role: {role_old!r} -> {role_new!r}"]
-        )
+        parts.extend(["", "identity:", f"  ~ role: {role_old!r} -> {role_new!r}"])
 
     parts.extend(_render_stack(diff.stack_diff))
     parts.extend(_render_rules(diff))

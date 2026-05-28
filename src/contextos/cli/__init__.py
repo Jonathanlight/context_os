@@ -35,7 +35,6 @@ from contextos.audit import (
 )
 from contextos.diagnostics import render_cli_many, render_json_many
 from contextos.diff import diff_documents, render_diff_cli, render_diff_json
-from contextos.stats import compute_stats, render_stats_cli, render_stats_json
 from contextos.emitters import (
     emit_claude_markdown,
     emit_clinerules,
@@ -51,6 +50,7 @@ from contextos.parsers import (
     parse_ctx_file,
     parse_markdown_file,
 )
+from contextos.stats import compute_stats, render_stats_cli, render_stats_json
 
 app = typer.Typer(
     name="ctx",
@@ -273,9 +273,7 @@ StatsRoot = Annotated[
     ),
 ]
 StatsJson = Annotated[bool, typer.Option("--json", help="Emit machine-readable JSON.")]
-StatsTopN = Annotated[
-    int, typer.Option("--top", help="Number of top diagnostic codes to surface.")
-]
+StatsTopN = Annotated[int, typer.Option("--top", help="Number of top diagnostic codes to surface.")]
 
 
 @app.command()
