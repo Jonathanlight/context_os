@@ -1,0 +1,82 @@
+name: VSCode publish
+
+# Triggered by pushing a ``v*`` tag, in parallel with the PyPI
+# release workflow. Bumps the extension's ``package.json`` version to
+# match the tag, builds, packages, and publishes to the VSCode
+# Marketplace via ``vsce publish``.
+#
+# Operator setup (one-time, documented in docs/release.md):
+#   1. Create a Marketplace publisher (https://aka.ms/vscode-create-publisher)
+#      whose ID matches ``publisher`` in extensions/vscode/package.json
+#      (currently ``jonathanlight``).
+#   2. Generate a Personal Access Token at
+#      https://dev.azure.com/<your-org>/_usersSettings/tokens
+#      scoped to "Marketplace > Manage".
+#   3. Store the PAT as the ``VSCE_PAT`` repo secret on GitHub.
+#
+# When ``VSCE_PAT`` is unset, the workflow detects that and skips
+# the publish step rather than failing -- the rest of the build still
+# runs as a syntax check.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish VSCode extension
+    runs-on: ubuntu-latest
+    environment: vscode
+    defaults:
+      run:
+        working-directory: extensions/vscode
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: extensions/vscode/package-lock.json
+
+      - name: Install npm deps
+        run: npm ci --no-fund --no-audit
+
+      - name: Sync extension version to tag
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          # npm version <semver> rewrites package.json and creates a
+          # tag commit by default; --no-git-tag-version skips the
+          # local commit because we're already on a tag.
+          npm version "$TAG_VERSION" --no-git-tag-version --allow-same-version
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Verify built artifact exists
+        run: test -f dist/extension.js
+
+      - name: Detect publish mode
+        env:
+          HAS_PAT: ${{ secrets.VSCE_PAT != '' }}
+        run: |
+          if [ "$HAS_PAT" = "true" ]; then
+            echo "::notice ::Publishing to VSCode Marketplace (VSCE_PAT secret present)."
+          else
+            echo "::notice ::Skipping VSCode publish (VSCE_PAT not set). Build verified; tag the next release after configuring the secret."
+          fi
+
+      - name: Publish to Marketplace
+        if: ${{ secrets.VSCE_PAT != '' }}
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          set -euo pipefail
+          npx --yes @vscode/vsce publish --pat "$VSCE_PAT"
