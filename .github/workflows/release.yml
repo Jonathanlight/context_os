@@ -21,6 +21,9 @@ on:
   push:
     tags:
       - "v*"
+  # ``workflow_dispatch`` enables manual re-runs from the Actions UI or
+  # ``gh workflow run release.yml --ref vX.Y.Z`` for hotfix re-publishes.
+  workflow_dispatch:
 
 permissions:
   contents: write
