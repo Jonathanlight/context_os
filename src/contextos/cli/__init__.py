@@ -34,6 +34,7 @@ from contextos.audit import (
     render_audit_json,
     scan_repo,
 )
+from contextos.audit.renderer_html import render_audit_html
 from contextos.diagnostics import render_cli_many, render_json_many
 from contextos.diff import diff_documents, render_diff_cli, render_diff_json
 from contextos.emitters import (
@@ -252,8 +253,26 @@ AuditRoot = Annotated[
     ),
 ]
 AuditJson = Annotated[bool, typer.Option("--json", help="Emit machine-readable JSON.")]
+AuditHtml = Annotated[
+    bool,
+    typer.Option(
+        "--html",
+        help=(
+            "Render a self-contained HTML report with severity filters. "
+            "Pair with --output to write to a file."
+        ),
+    ),
+]
 AuditNoColor = Annotated[
     bool, typer.Option("--no-color", help="Disable ANSI colors in CLI output.")
+]
+AuditOutput = Annotated[
+    Path | None,
+    typer.Option(
+        "--output",
+        "-o",
+        help="Write the rendered report to this path instead of stdout.",
+    ),
 ]
 
 
@@ -261,6 +280,8 @@ AuditNoColor = Annotated[
 def audit(
     root: AuditRoot,
     json_output: AuditJson = False,
+    html_output: AuditHtml = False,
+    output: AuditOutput = None,
     no_color: AuditNoColor = False,
 ) -> None:
     """Walk a repo, parse every recognized agent file, run all analyzers.
@@ -269,14 +290,31 @@ def audit(
     Files matching a recognized agent target but without a parser yet
     (cursor / cline / windsurf / copilot) are listed under "Skipped".
     Exit code 1 if any error-severity diagnostic fires.
+
+    Output modes:
+
+    - default: rustc-style text on stdout.
+    - ``--json``: structured payload for CI pipelines.
+    - ``--html``: self-contained HTML page with severity filters,
+      well-suited for archiving as a PR artifact or pasting into a
+      ``<details>`` block in a sticky comment.
     """
+    if json_output and html_output:
+        typer.echo("--json and --html are mutually exclusive", err=True)
+        raise typer.Exit(code=1)
+
     project = scan_repo(root)
     report = audit_project(project)
 
+    rendered: str
     if json_output:
-        typer.echo(render_audit_json(report, indent=2))
+        rendered = render_audit_json(report, indent=2)
+    elif html_output:
+        rendered = render_audit_html(report)
     else:
-        typer.echo(render_audit_cli(report, color=not no_color))
+        rendered = render_audit_cli(report, color=not no_color)
+
+    _emit_payload(rendered, output=output)
 
     raise typer.Exit(code=1 if report.has_errors() else 0)
 
