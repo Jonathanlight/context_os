@@ -9,6 +9,91 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet.
 
+## [4.0.0] — 2026-05-28
+
+📦 **Adoption & visualization.** ContextOS ships to PyPI and the
+VSCode Marketplace via configurable release workflows, surfaces
+audit and eval results as self-contained HTML pages, and includes
+`ctx fix` for auto-applying the four structured code-actions across
+a repository.
+
+Major version bump because the conceptual surface expands again —
+from "lint + evaluate" to "lint + evaluate + auto-fix + ship." No
+backwards-incompatible API changes; every v3.x consumer keeps
+working unchanged.
+
+### Added
+
+#### Phase 8 — Adoption & visualization (PRs #68–#73)
+
+- **PyPI publish unblock** (PR #68) — `release.yml` documents the
+  two supported paths (API token vs trusted publishing), prints a
+  workflow notice naming which path runs, falls through from one
+  to the other when only one is configured. New
+  `scripts/publish-to-pypi.sh` manual escape hatch.
+- **VSCode Marketplace workflow** (PR #69) — `vscode-publish.yml`
+  triggered on the same `v*` tags; bumps `package.json` to match
+  the tag, builds, runs `vsce publish` when `VSCE_PAT` secret is
+  present, degrades to build-only otherwise.
+- **HTML audit report** (PR #70) — `ctx audit --html` renders a
+  self-contained page with severity filter buttons, per-file
+  accordion sections (sorted by path), cross-artifact + skipped
+  blocks, summary footer. Hand-rolled with `html.escape` at every
+  interpolation — no jinja2 dep — and inline CSS+JS so the output
+  is one drop-in file. `--json` and `--html` are mutually
+  exclusive.
+- **HTML eval report** (PR #71) — `ctx eval --html` renders cases
+  as a filterable table with PASS / FAIL chips, pass-rate progress
+  bar, token total badge, expected/actual columns, inline error
+  notes for provider exceptions.
+- **`ctx fix` command + structured fixes F001 / X001 / S005**
+  (PR #72) — new fix module with `compute_fix(text, diag) →
+  TextEdit | None` dispatcher routing by `diag.code`. Four
+  fixes ship today: X003 (strip trailing `?`), F001 (sentence-
+  case ALL CAPS title), X001 (strip TODO/FIXME markers at title
+  start), S005 (prepend `# <title>` to SKILL.md body lacking H1).
+  Dry-run by default; `--apply` writes the new content. Walks
+  directories via the audit scanner so the set of fixed files
+  matches what `ctx audit` would lint.
+- **Docs** (this PR) — `docs/dashboard.md` covering both HTML
+  reports + the `ctx fix` workflow with safety properties and a
+  pre-commit hook example. `docs/release.md` covers the PyPI +
+  VSCode Marketplace setup walkthroughs.
+
+### New CLI subcommands
+
+| Command | What it does |
+| --- | --- |
+| `ctx fix <target>` | Auto-apply structured fixes; dry-run by default, `--apply` writes |
+
+### Extended CLI
+
+| Command | New flag | Purpose |
+| --- | --- | --- |
+| `ctx audit` | `--html`, `--output` | Self-contained HTML report; `--json` and `--html` mutually exclusive |
+| `ctx eval` | `--html` | Self-contained HTML report; same mutual exclusion |
+
+### New workflows
+
+- `.github/workflows/vscode-publish.yml` — Marketplace publication
+  on `v*` tag push.
+
+### Documented limitations
+
+- The LSP `code_actions.py` module still has its own X003
+  implementation. A subsequent PR will unify both paths on
+  `contextos.fix.structured`. Documented in the fix package
+  docstring.
+- PyPI publishing still requires a manual one-time setup step
+  (either create the `PYPI_API_TOKEN` secret OR configure a
+  Trusted Publisher on pypi.org). Documented in `docs/release.md`.
+- VSCode Marketplace publishing requires a Marketplace publisher
+  account + a Personal Access Token in the `VSCE_PAT` secret.
+  Documented in `docs/release.md`.
+- No multi-edit fixes today — each diagnostic gets at most one
+  `TextEdit`. Multi-step refactors (e.g. moving a URL out of a
+  title into `links`) need additional plumbing.
+
 ## [3.0.0] — 2026-05-28
 
 🎯 **Functional evaluation.** ContextOS no longer only validates
