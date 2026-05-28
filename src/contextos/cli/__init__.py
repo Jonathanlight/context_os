@@ -27,8 +27,15 @@ import typer
 from contextos import __version__
 from contextos.analyzers import lint_document
 from contextos.ast.document import Document
+from contextos.audit import (
+    audit_project,
+    render_audit_cli,
+    render_audit_json,
+    scan_repo,
+)
 from contextos.diagnostics import render_cli_many, render_json_many
 from contextos.diff import diff_documents, render_diff_cli, render_diff_json
+from contextos.stats import compute_stats, render_stats_cli, render_stats_json
 from contextos.emitters import (
     emit_claude_markdown,
     emit_clinerules,
