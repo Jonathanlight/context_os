@@ -46,9 +46,11 @@ checks for today.
 
 ## Status
 
-🚀 **Phase 4 in progress.** v0.1.0 shipped; v1.0 launch tracks the
-[roadmap](specs/ROADMAP.md). 14 lint rules across A / C / F / K / P / X
-categories, plus one cross-artifact rule (XA001).
+🚀 **v1.0.0 shipped.** Phase 1 → Phase 4 deliverables — parser, six
+target emitters, 14 single-file lint rules across A / C / F / K / P / X
+categories, the XA001 cross-artifact collision rule, semantic diff,
+repo audit, corpus stats, and this docs site — are all live. See the
+[roadmap](specs/ROADMAP.md) for Phase 5 (Skills) and Phase 6 (RAG).
 
 ## Supported targets
 

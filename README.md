@@ -30,7 +30,7 @@ the rule that says `Always use type hints` in `CLAUDE.md` while
 sees both; one of them wins; the choice is invisible to the author.
 
 ContextOS treats the context as **source code**: parsed into a typed
-AST, validated against 14+ lint rules, kept in sync across targets,
+AST, validated against 15 lint rules, kept in sync across targets,
 diffed semantically, audited at the repo level. The CLI ships
 production-shaped errors with `file:line:column` locations and concrete
 suggestions, not vibes.
@@ -163,15 +163,17 @@ target coverage:
 
 ## Status
 
-🚀 **Phase 4 in progress.** v0.1.0 shipped; v1.0 launch tracks the
-[roadmap](docs/specs/ROADMAP.md).
+🚀 **v1.0.0 shipped.** Phase 1 → Phase 4 deliverables — parser, 15 lint
+rules, 6 target emitters, semantic diff, repo audit, corpus stats, and
+the docs site — are all live. See the
+[roadmap](docs/specs/ROADMAP.md) for what comes next.
 
 | Phase | What                                          | Status     |
 |-------|-----------------------------------------------|------------|
 | 1     | Parser + AST + Claude emitter                 | ✅ shipped |
-| 2     | 14 lint rules (A / C / F / K / P / X)          | ✅ shipped |
+| 2     | 15 lint rules (A / C / F / K / P / X / XA)     | ✅ shipped |
 | 3     | 5 more emitters + diff + audit                | ✅ shipped |
-| 4     | Corpus study + docs site + launch v1.0         | 🟢 active  |
+| 4     | Corpus stats + docs site + v1.0 launch         | ✅ shipped |
 | 5     | Anthropic Skills (`SKILL.md`)                  | ⏳ planned |
 | 6     | RAG corpora                                    | ⏳ planned |
 
