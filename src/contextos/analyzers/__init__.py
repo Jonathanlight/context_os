@@ -27,9 +27,11 @@ from contextos.analyzers.agent import (
     llm_friendly,
     platform,
 )
+from contextos.analyzers.rag import chunking_sanity, pipeline_completeness
 from contextos.analyzers.skill import body_coherence, description_quality
 from contextos.ast.agent import AgentDocument
 from contextos.ast.document import Document
+from contextos.ast.rag import RagDocument
 from contextos.ast.skill import SkillDocument
 from contextos.diagnostics import Diagnostic, DiagnosticBag
 
@@ -38,6 +40,9 @@ AgentAnalyzer = Callable[[AgentDocument], Iterable[Diagnostic]]
 
 SkillAnalyzer = Callable[[SkillDocument], Iterable[Diagnostic]]
 """Type alias for skill analyzers."""
+
+RagAnalyzer = Callable[[RagDocument], Iterable[Diagnostic]]
+"""Type alias for RAG analyzers."""
 
 _AGENT_ANALYZERS: tuple[Callable[[AgentDocument, str | None], Iterable[Diagnostic]], ...] = (
     ambiguity.check,
@@ -51,6 +56,11 @@ _AGENT_ANALYZERS: tuple[Callable[[AgentDocument, str | None], Iterable[Diagnosti
 _SKILL_ANALYZERS: tuple[Callable[[SkillDocument], Iterable[Diagnostic]], ...] = (
     description_quality.check,
     body_coherence.check,
+)
+
+_RAG_ANALYZERS: tuple[Callable[[RagDocument], Iterable[Diagnostic]], ...] = (
+    chunking_sanity.check,
+    pipeline_completeness.check,
 )
 
 
@@ -69,7 +79,10 @@ def lint_document(doc: Document, *, source: str | None = None) -> DiagnosticBag:
     elif doc.type == "skill" and doc.skill is not None:
         for skill_analyzer in _SKILL_ANALYZERS:
             bag.extend(skill_analyzer(doc.skill))
+    elif doc.type == "rag" and doc.rag is not None:
+        for rag_analyzer in _RAG_ANALYZERS:
+            bag.extend(rag_analyzer(doc.rag))
     return bag
 
 
-__all__ = ["AgentAnalyzer", "SkillAnalyzer", "lint_document"]
+__all__ = ["AgentAnalyzer", "RagAnalyzer", "SkillAnalyzer", "lint_document"]
