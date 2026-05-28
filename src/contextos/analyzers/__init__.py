@@ -1,17 +1,18 @@
 """Analyzers: AST → diagnostics.
 
-Phase 2 (Milestone 2.0+) ships the agent-family analyzers across six
-categories: A (ambiguity), C (contradiction), K (completeness), X
-(anti-pattern), F (LLM-friendliness), P (platform). Phase 5 / 6 add the
-skill and RAG categories.
+Phase 2 shipped the agent-family analyzers across six categories: A
+(ambiguity), C (contradiction), K (completeness), X (anti-pattern),
+F (LLM-friendliness), P (platform). Phase 5.4 adds the skill family
+(S category). Phase 6 will add the RAG category.
 
 An analyzer is a callable
-``(agent: AgentDocument, *, source: str | None) -> Iterable[Diagnostic]``.
-The orchestrator :func:`lint_document` runs every registered analyzer
-in deterministic order and returns a :class:`DiagnosticBag`.
+``(payload, *, source: str | None) -> Iterable[Diagnostic]``. The
+orchestrator :func:`lint_document` dispatches on ``Document.type``,
+runs every registered analyzer for that flavor in deterministic order,
+and returns a :class:`DiagnosticBag`.
 
-Module-level functions rather than classes keep the surface tight. Wrap
-in a class only when an analyzer needs per-call configuration.
+Module-level functions rather than classes keep the surface tight.
+Wrap in a class only when an analyzer needs per-call configuration.
 """
 
 from __future__ import annotations
@@ -26,17 +27,17 @@ from contextos.analyzers.agent import (
     llm_friendly,
     platform,
 )
+from contextos.analyzers.skill import body_coherence, description_quality
 from contextos.ast.agent import AgentDocument
 from contextos.ast.document import Document
+from contextos.ast.skill import SkillDocument
 from contextos.diagnostics import Diagnostic, DiagnosticBag
 
 AgentAnalyzer = Callable[[AgentDocument], Iterable[Diagnostic]]
-"""Type alias: an agent analyzer takes the agent submodel and yields diagnostics.
+"""Type alias for agent analyzers — used by external integrations only."""
 
-The ``source`` keyword argument is bound by :func:`lint_document` before the
-callable is invoked, so individual analyzers do not need to thread the file
-path through their internal helpers.
-"""
+SkillAnalyzer = Callable[[SkillDocument], Iterable[Diagnostic]]
+"""Type alias for skill analyzers."""
 
 _AGENT_ANALYZERS: tuple[Callable[[AgentDocument, str | None], Iterable[Diagnostic]], ...] = (
     ambiguity.check,
@@ -47,19 +48,28 @@ _AGENT_ANALYZERS: tuple[Callable[[AgentDocument, str | None], Iterable[Diagnosti
     platform.check,
 )
 
+_SKILL_ANALYZERS: tuple[Callable[[SkillDocument], Iterable[Diagnostic]], ...] = (
+    description_quality.check,
+    body_coherence.check,
+)
+
 
 def lint_document(doc: Document, *, source: str | None = None) -> DiagnosticBag:
     """Run every registered analyzer on ``doc`` and collect diagnostics.
 
-    Returns a :class:`DiagnosticBag`; callers can iterate, render via the
-    diagnostics renderers, or compute a pass/fail with
+    Dispatches on :attr:`Document.type`; only the analyzers matching
+    the active flavor are invoked. The returned :class:`DiagnosticBag`
+    can be iterated, rendered, or queried for pass/fail via
     :meth:`DiagnosticBag.has_errors`.
     """
     bag = DiagnosticBag()
-    if doc.agent is not None:
-        for analyzer in _AGENT_ANALYZERS:
-            bag.extend(analyzer(doc.agent, source))
+    if doc.type == "agent" and doc.agent is not None:
+        for agent_analyzer in _AGENT_ANALYZERS:
+            bag.extend(agent_analyzer(doc.agent, source))
+    elif doc.type == "skill" and doc.skill is not None:
+        for skill_analyzer in _SKILL_ANALYZERS:
+            bag.extend(skill_analyzer(doc.skill))
     return bag
 
 
-__all__ = ["AgentAnalyzer", "lint_document"]
+__all__ = ["AgentAnalyzer", "SkillAnalyzer", "lint_document"]
