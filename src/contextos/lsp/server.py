@@ -35,7 +35,9 @@ from contextos import __version__
 from contextos.analyzers import lint_document
 from contextos.ast.common import Position
 from contextos.diagnostics import Diagnostic, DiagSeverity
+from contextos.lsp.completion import compute_completions
 from contextos.lsp.diagnostics_adapter import to_lsp_diagnostic
+from contextos.lsp.hover import compute_hover
 from contextos.parsers import (
     ContextOSParseError,
     parse_ctx_string,
@@ -75,6 +77,20 @@ def build_server() -> LanguageServer:
     def _did_save(params: lsp.DidSaveTextDocumentParams) -> None:
         text = server.workspace.get_text_document(params.text_document.uri).source
         _publish(server, params.text_document.uri, text)
+
+    @server.feature(
+        lsp.TEXT_DOCUMENT_COMPLETION,
+        lsp.CompletionOptions(trigger_characters=["[", '"', " ", ":"]),
+    )
+    def _completion(params: lsp.CompletionParams) -> lsp.CompletionList:
+        text = server.workspace.get_text_document(params.text_document.uri).source
+        items = compute_completions(text, params.position, params.text_document.uri)
+        return lsp.CompletionList(is_incomplete=False, items=items)
+
+    @server.feature(lsp.TEXT_DOCUMENT_HOVER)
+    def _hover(params: lsp.HoverParams) -> lsp.Hover | None:
+        text = server.workspace.get_text_document(params.text_document.uri).source
+        return compute_hover(text, params.position)
 
     return server
 
