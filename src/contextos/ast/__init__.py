@@ -18,6 +18,12 @@ from contextos.ast.agent import (
 )
 from contextos.ast.common import Position, ProseBlock, Severity
 from contextos.ast.document import Document, DocumentType
+from contextos.ast.eval import (
+    EvalSuite,
+    EvalTarget,
+    RagCase,
+    SkillCase,
+)
 from contextos.ast.rag import (
     CHUNK_MAX_TOKENS_CEILING,
     CHUNK_MIN_TOKENS_FLOOR,
@@ -49,16 +55,20 @@ __all__ = [
     "Document",
     "DocumentEntry",
     "DocumentType",
+    "EvalSuite",
+    "EvalTarget",
     "ExpectedOutputFormat",
     "FreshnessPolicy",
     "Identity",
     "LanguageCode",
     "Position",
     "ProseBlock",
+    "RagCase",
     "RagConfig",
     "RagDocument",
     "Rule",
     "Severity",
+    "SkillCase",
     "SkillDocument",
     "Stack",
     "Style",
