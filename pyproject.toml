@@ -36,6 +36,10 @@ dev = [
     "mypy>=1.10",
     "pre-commit>=3.7",
 ]
+docs = [
+    "mkdocs>=1.5",
+    "mkdocs-material>=9.0",
+]
 
 [project.scripts]
 ctx = "contextos.cli:app"
