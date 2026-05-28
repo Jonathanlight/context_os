@@ -42,10 +42,7 @@ class SkillEvalRunner:
         ``RagEvalRunner``.
         """
         if suite.target != "anthropic_skill":
-            msg = (
-                f"SkillEvalRunner requires suite.target='anthropic_skill', "
-                f"got '{suite.target}'"
-            )
+            msg = f"SkillEvalRunner requires suite.target='anthropic_skill', got '{suite.target}'"
             raise ValueError(msg)
 
         case_results: list[EvalCaseResult] = []

@@ -21,22 +21,12 @@ class TestLoadSkillsFromDir:
     def test_walks_recursively(self, tmp_path: Path) -> None:
         (tmp_path / "a").mkdir()
         (tmp_path / "a" / "SKILL.md").write_text(
-            "---\n"
-            "name: a\n"
-            "title: A\n"
-            "description: Triggers when the user asks for A.\n"
-            "---\n\n"
-            "# A\n",
+            "---\nname: a\ntitle: A\ndescription: Triggers when the user asks for A.\n---\n\n# A\n",
             encoding="utf-8",
         )
         (tmp_path / "b" / "deep").mkdir(parents=True)
         (tmp_path / "b" / "deep" / "SKILL.md").write_text(
-            "---\n"
-            "name: b\n"
-            "title: B\n"
-            "description: Triggers when the user asks for B.\n"
-            "---\n\n"
-            "# B\n",
+            "---\nname: b\ntitle: B\ndescription: Triggers when the user asks for B.\n---\n\n# B\n",
             encoding="utf-8",
         )
         skills = load_skills_from_dir(tmp_path)

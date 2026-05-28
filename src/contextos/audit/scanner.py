@@ -96,9 +96,7 @@ def scan_repo(root: Path) -> ProjectInferred:
             )
             continue
 
-        skip_target = _SKIPPED_BASENAMES.get(path.name) or _SKIPPED_RELATIVE_PATHS.get(
-            rel_posix
-        )
+        skip_target = _SKIPPED_BASENAMES.get(path.name) or _SKIPPED_RELATIVE_PATHS.get(rel_posix)
         if skip_target is not None:
             skipped_files.append(
                 SkippedFile(
@@ -134,9 +132,7 @@ def _route_ctx_file(
     try:
         doc = parse_ctx_file(path)
     except ContextOSParseError as exc:
-        skipped_files.append(
-            SkippedFile(path=path, target="ctx", reason=f"parse error: {exc}")
-        )
+        skipped_files.append(SkippedFile(path=path, target="ctx", reason=f"parse error: {exc}"))
         return
     match doc.type:
         case "agent":

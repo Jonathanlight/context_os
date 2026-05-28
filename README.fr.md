@@ -10,7 +10,7 @@
 
 [![CI](https://github.com/Jonathanlight/context_os/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/Jonathanlight/context_os/actions/workflows/ci.yml)
 [![Docs](https://github.com/Jonathanlight/context_os/actions/workflows/docs.yml/badge.svg?branch=develop)](https://jonathanlight.github.io/context_os/)
-[![PyPI](https://img.shields.io/pypi/v/context-os.svg)](https://pypi.org/project/context-os/)
+[![PyPI](https://img.shields.io/pypi/v/context-os-ctx.svg)](https://pypi.org/project/context-os-ctx/)
 [![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -73,18 +73,40 @@ CLAUDE.md AGENTS.md cursor copilot windsurf  SKILL.md
 
 ## Installation
 
+> **Publication PyPI en attente** — la distribution `context-os-ctx` sur
+> PyPI n'est pas (encore) le package de ce dépôt. Tant que la
+> première release n'est pas publiée, installer depuis la source
+> git. Voir [`docs/release.md`](docs/release.md) pour la
+> configuration de la publication.
+
+### Depuis la source git (recommandé aujourd'hui)
+
 ```bash
 # CLI de base
-pipx install context-os
+pipx install git+https://github.com/Jonathanlight/context_os.git
 
 # Avec support éditeur (LSP)
-pipx install 'context-os[lsp]'
+pipx install 'git+https://github.com/Jonathanlight/context_os.git#egg=context-os-ctx[lsp]'
 
 # Avec évaluation (Anthropic + OpenAI + numpy)
-pipx install 'context-os[eval]'
+pipx install 'git+https://github.com/Jonathanlight/context_os.git#egg=context-os-ctx[eval]'
 ```
 
-Vérification :
+Épingler une release spécifique avec `@vX.Y.Z` :
+
+```bash
+pipx install git+https://github.com/Jonathanlight/context_os.git@v4.0.0
+```
+
+### Une fois la publication PyPI configurée
+
+```bash
+pipx install context-os-ctx
+pipx install 'context-os-ctx[lsp]'
+pipx install 'context-os-ctx[eval]'
+```
+
+### Vérification
 
 ```bash
 ctx --version
@@ -260,7 +282,7 @@ Cinq surfaces de consommation : **CLI** · **Bibliothèque Python** · **LSP** �
 ContextOS parle LSP et fournit une extension VSCode.
 
 ```bash
-pipx install 'context-os[lsp]'
+pipx install 'git+https://github.com/Jonathanlight/context_os.git#egg=context-os-ctx[lsp]'
 ```
 
 - **VSCode** — extension dans [`extensions/vscode/`](extensions/vscode).
@@ -278,7 +300,7 @@ Les 27 règles, l'autocomplétion, le hover, et les quick-fixes se comportent id
 Passer de la validation **structurelle** à la validation **fonctionnelle** : le skill se déclenche-t-il vraiment sur les bons prompts ? Le retrieval RAG trouve-t-il vraiment les sources attendues ?
 
 ```bash
-pipx install 'context-os[eval]'
+pipx install 'git+https://github.com/Jonathanlight/context_os.git#egg=context-os-ctx[eval]'
 
 ctx eval skills.eval.toml --dry-run             # smoke en mock, aucun appel API
 ctx eval skills.eval.toml --skills-dir skills/  # run réel Anthropic

@@ -6,7 +6,7 @@ identical to the CLI) and **as a sticky pull-request comment** that's
 updated in place on every re-run.
 
 Composite action — no Docker, no JavaScript runtime; just
-`setup-python` + `pip install context-os` + `ctx audit --json` +
+`setup-python` + `pip install context-os-ctx` + `ctx audit --json` +
 GitHub's REST API for the comment.
 
 ## Quick start
@@ -35,7 +35,7 @@ That's it. On every PR you get:
 | --- | --- | --- |
 | `path` | `.` | Path to audit (passed straight to `ctx audit`). |
 | `python-version` | `3.12` | Python version for `setup-python`. Must be `>= 3.12`. |
-| `context-os-spec` | `context-os` | pip install spec. Use `context-os==2.0.0` to pin, `-e ./` for editable installs, or a git URL for unreleased branches. |
+| `context-os-spec` | `context-os-ctx` | pip install spec. Use `context-os-ctx==2.0.0` to pin, `-e ./` for editable installs, or a git URL for unreleased branches. |
 | `fail-on-error` | `true` | Exit non-zero when the audit reports any **error-severity** diagnostic. Warnings and info never affect the exit code. |
 | `comment-on-pr` | `true` | Post a sticky PR comment with the report. Honored only on `pull_request` events. |
 | `github-token` | `${{ github.token }}` | Override only if you need cross-repo comment posting. |
@@ -55,7 +55,7 @@ That's it. On every PR you get:
 ```yaml
 - uses: Jonathanlight/context_os/actions/lint@v2.0.0
   with:
-    context-os-spec: 'context-os==2.0.0'
+    context-os-spec: 'context-os-ctx==2.0.0'
 ```
 
 ### Audit a subdirectory only

@@ -166,8 +166,7 @@ def parse_ctx_string(content: str, source: str = _STRING_SOURCE) -> Document:
             f"unsupported artifact(s): {unsupported}",
             source=source,
             suggestion=(
-                "supported artifacts in this release: 'context', 'skills'; "
-                "'rag' lands in Phase 6"
+                "supported artifacts in this release: 'context', 'skills'; 'rag' lands in Phase 6"
             ),
         )
 
@@ -275,8 +274,7 @@ def _build_rag_root(
             "artifacts=['rag'] requires a [rag] table",
             source=source,
             suggestion=(
-                "add a [rag] table with at least chunking_strategy and "
-                "chunk_target_tokens"
+                "add a [rag] table with at least chunking_strategy and chunk_target_tokens"
             ),
         )
 
@@ -291,9 +289,7 @@ def _build_rag_root(
         raise ContextOSParseError(
             "RAG corpus has no [[document]] entries — nothing would be indexed",
             source=source,
-            suggestion=(
-                "add at least one [[document]] block declaring a source glob"
-            ),
+            suggestion=("add at least one [[document]] block declaring a source glob"),
         )
 
     try:

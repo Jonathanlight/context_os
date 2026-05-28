@@ -18,10 +18,10 @@ inputs:
     description: |
       pip install spec for the ContextOS package. Use the bare name
       "context-os" (default) to pull the latest published release, or
-      override with a version pin ("context-os==2.0.0"), an editable
+      override with a version pin ("context-os-ctx==2.0.0"), an editable
       install ("-e ./"), or a git URL.
     required: false
-    default: 'context-os'
+    default: 'context-os-ctx'
   fail-on-error:
     description: |
       When "true" (default), the action exits non-zero if the audit

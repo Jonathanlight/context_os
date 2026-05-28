@@ -34,7 +34,7 @@ RAG corpora configurations.
 ## Quick example
 
 ```bash
-pipx install context-os
+pipx install context-os-ctx
 ctx compile project.ctx --target claude_code --output-dir .
 ctx lint CLAUDE.md --target claude_code
 ctx audit .

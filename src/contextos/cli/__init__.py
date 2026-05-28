@@ -427,7 +427,7 @@ def compile_cmd(
 def lsp_cmd() -> None:
     """Run the ContextOS language server over stdio.
 
-    Requires the ``lsp`` extras (``pipx install context-os[lsp]``).
+    Requires the ``lsp`` extras (``pipx install context-os-ctx[lsp]``).
     Phase 7.1 ships stdio transport only — TCP / WebSocket lands later
     if downstream editors need it. The server is consumed by the
     ``contextos-vscode`` extension shipped in Phase 7.4, or by any
@@ -437,7 +437,7 @@ def lsp_cmd() -> None:
         from contextos.lsp import run_stdio  # noqa: PLC0415 — lazy by design
     except ImportError as exc:  # pragma: no cover — guarded import
         typer.echo(
-            "ctx lsp requires the 'lsp' extras: `pip install context-os[lsp]`",
+            "ctx lsp requires the 'lsp' extras: `pip install context-os-ctx[lsp]`",
             err=True,
         )
         raise typer.Exit(code=1) from exc
@@ -464,9 +464,7 @@ def _dispatch_parse(file: Path, *, target: str | None) -> Document:
         raise ContextOSParseError(
             f"--target is required for non-.ctx sources (got {file.name})",
             source=str(file),
-            suggestion=(
-                f"add --target one of: {', '.join((*SUPPORTED_TARGETS, _SKILL_TARGET))}"
-            ),
+            suggestion=(f"add --target one of: {', '.join((*SUPPORTED_TARGETS, _SKILL_TARGET))}"),
         )
     return parse_markdown_file(file, target=target)
 
@@ -539,10 +537,7 @@ EvalHtml = Annotated[
     bool,
     typer.Option(
         "--html",
-        help=(
-            "Render a self-contained HTML report. Pair with --output to "
-            "write to a file."
-        ),
+        help=("Render a self-contained HTML report. Pair with --output to write to a file."),
     ),
 ]
 EvalOutput = Annotated[
@@ -687,8 +682,7 @@ def _run_skill_eval(
     else:
         if skills_dir is None:
             typer.echo(
-                "skill eval needs --skills-dir <path>; pass --dry-run to skip "
-                "the live provider.",
+                "skill eval needs --skills-dir <path>; pass --dry-run to skip the live provider.",
                 err=True,
             )
             raise typer.Exit(code=1)
@@ -698,7 +692,7 @@ def _run_skill_eval(
             )
         except ImportError as exc:  # pragma: no cover
             typer.echo(
-                "ctx eval (live) requires the 'eval' extras: `pip install context-os[eval]`",
+                "ctx eval (live) requires the 'eval' extras: `pip install context-os-ctx[eval]`",
                 err=True,
             )
             raise typer.Exit(code=1) from exc
@@ -724,8 +718,7 @@ def _run_rag_eval(
     else:
         if rag_chunks is None:
             typer.echo(
-                "rag eval needs --rag-chunks <path>; pass --dry-run to skip "
-                "the live provider.",
+                "rag eval needs --rag-chunks <path>; pass --dry-run to skip the live provider.",
                 err=True,
             )
             raise typer.Exit(code=1)
@@ -736,7 +729,7 @@ def _run_rag_eval(
         except ImportError as exc:  # pragma: no cover
             typer.echo(
                 "ctx eval (live rag) requires the 'eval' extras: "
-                "`pip install context-os[eval]`",
+                "`pip install context-os-ctx[eval]`",
                 err=True,
             )
             raise typer.Exit(code=1) from exc
@@ -818,12 +811,8 @@ def eval_diff_cmd(
     from contextos.eval.results import EvalRunResult  # noqa: PLC0415
 
     try:
-        baseline_run = EvalRunResult.model_validate_json(
-            baseline.read_text(encoding="utf-8")
-        )
-        current_run = EvalRunResult.model_validate_json(
-            current.read_text(encoding="utf-8")
-        )
+        baseline_run = EvalRunResult.model_validate_json(baseline.read_text(encoding="utf-8"))
+        current_run = EvalRunResult.model_validate_json(current.read_text(encoding="utf-8"))
     except Exception as exc:
         typer.echo(f"failed to parse eval result JSON: {exc}", err=True)
         raise typer.Exit(code=1) from exc
@@ -906,6 +895,4 @@ def fix_cmd(
     if apply:
         typer.echo(f"applied fixes to {len(changed)} file(s)")
     else:
-        typer.echo(
-            f"dry-run: {len(changed)} file(s) would change. Re-run with --apply."
-        )
+        typer.echo(f"dry-run: {len(changed)} file(s) would change. Re-run with --apply.")

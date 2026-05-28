@@ -53,7 +53,7 @@ class TestInfoOnly:
             code="K002",
             message=(
                 "must-severity rule 'TDD-001' has no rationale\n\n"
-                "help: add `rationale = \"...\"` explaining why\n"
+                'help: add `rationale = "..."` explaining why\n'
                 "(what breaks if it is violated)"
             ),
         )
@@ -95,9 +95,7 @@ class TestX003StructuredFix:
 
     def test_emits_structured_action_with_workspace_edit(self) -> None:
         diag = self._x003_diag(line=3)  # [[rules]] header line
-        actions = compute_code_actions(
-            self._SRC, [diag], "file:///tmp/x.ctx"
-        )
+        actions = compute_code_actions(self._SRC, [diag], "file:///tmp/x.ctx")
         # Two actions: structured + info-only fallback.
         assert len(actions) == 2
         structured = actions[0]
@@ -107,9 +105,7 @@ class TestX003StructuredFix:
 
     def test_workspace_edit_targets_question_mark(self) -> None:
         diag = self._x003_diag(line=3)
-        actions = compute_code_actions(
-            self._SRC, [diag], "file:///tmp/x.ctx"
-        )
+        actions = compute_code_actions(self._SRC, [diag], "file:///tmp/x.ctx")
         structured = actions[0]
         assert structured.edit is not None
         changes = structured.edit.changes

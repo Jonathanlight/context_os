@@ -7,7 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Nothing yet.
+### Changed
+
+- **PyPI distribution name renamed** from `context-os` to
+  `context-os-ctx`. The `context-os` name on PyPI was already
+  reserved by an unrelated project; `context-os-ctx` is free and is
+  now the distribution name shipped from this repository.
+  - **Import name is unchanged** (`import contextos`).
+  - **CLI binary is unchanged** (`ctx`).
+  - Install commands across the README, getting-started guide,
+    editor / eval docs, the lint-action default, and the local
+    publish script all reference the new name.
+
+### Fixed
+
+- `release.yml` (PyPI publish): now uses a `Detect publish mode`
+  step that prints which credential path will be attempted.
+- `vscode-publish.yml`: dropped `environment: vscode` (which
+  required manual setup on the repo) and replaced
+  `if: secrets.VSCE_PAT != ''` with the env-indirection pattern
+  via `steps.detect.outputs.should_publish`, which is the canonical
+  way to use secrets in step-level conditionals. Added
+  `workflow_dispatch` for manual runs; non-`v*` ref names skip
+  the version-sync step cleanly.
+- `docs.yml`: the GitHub Pages deploy steps now `continue-on-error`
+  when Pages isn't enabled on the repo. The build still verifies
+  on every push; the deploy is best-effort until the operator
+  enables Pages in **Settings → Pages → Source = GitHub Actions**.
+- Repo-wide `ruff format` pass.
 
 ## [4.0.0] — 2026-05-28
 

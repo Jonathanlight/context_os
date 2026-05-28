@@ -47,7 +47,7 @@ operates on, see [`SPEC.md`](./SPEC.md).
 - **PyYAML** for YAML (RAG configs)
 - **pytest + hypothesis** for tests + property-based
 - **ruff** for lint and format
-- Distribution: `pipx install context-os`
+- Distribution: `pipx install context-os-ctx`
 
 Additional dependencies for RAG and Skills:
 

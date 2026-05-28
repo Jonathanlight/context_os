@@ -97,17 +97,11 @@ def _render_file_block(path: str, diags: list[Diagnostic]) -> str:
 
 def _render_diagnostic_row(diag: Diagnostic) -> str:
     severity = diag.severity.value
-    position = (
-        f"{diag.position.line}:{diag.position.column}"
-        if diag.position is not None
-        else "?"
-    )
+    position = f"{diag.position.line}:{diag.position.column}" if diag.position is not None else "?"
     code = html.escape(diag.code)
     message = html.escape(diag.message)
     suggestion = (
-        f'<div class="suggestion">{html.escape(diag.suggestion)}</div>'
-        if diag.suggestion
-        else ""
+        f'<div class="suggestion">{html.escape(diag.suggestion)}</div>' if diag.suggestion else ""
     )
     doc_link = (
         f' <a class="doc-link" href="{html.escape(diag.doc_url)}" target="_blank">doc</a>'
@@ -142,9 +136,9 @@ def _render_skipped_section(entries: list[dict[str, str]]) -> str:
         return ""
     rows = "".join(
         '<tr><td class="skipped-path">'
-        f'{html.escape(str(entry.get("path", "?")))}</td>'
-        f'<td>{html.escape(str(entry.get("target", "?")))}</td>'
-        f'<td>{html.escape(str(entry.get("reason", "?")))}</td></tr>'
+        f"{html.escape(str(entry.get('path', '?')))}</td>"
+        f"<td>{html.escape(str(entry.get('target', '?')))}</td>"
+        f"<td>{html.escape(str(entry.get('reason', '?')))}</td></tr>"
         for entry in entries
     )
     return (
@@ -158,11 +152,7 @@ def _render_skipped_section(entries: list[dict[str, str]]) -> str:
 
 
 def _render_summary(report: AuditReport) -> str:
-    return (
-        '<footer class="summary">'
-        f"<p>Total: {report.total_count()} diagnostic(s).</p>"
-        "</footer>"
-    )
+    return f'<footer class="summary"><p>Total: {report.total_count()} diagnostic(s).</p></footer>'
 
 
 # ---------------------------------------------------------------------------

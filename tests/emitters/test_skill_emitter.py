@@ -202,9 +202,11 @@ class TestHypothesisRoundTrip:
             max_codepoint=126,
             blacklist_characters="\n\r\t:#-",
         )
-        return st.text(alphabet=alphabet, min_size=min_size, max_size=max_size).map(
-            str.strip
-        ).filter(lambda s: len(s) >= min_size)
+        return (
+            st.text(alphabet=alphabet, min_size=min_size, max_size=max_size)
+            .map(str.strip)
+            .filter(lambda s: len(s) >= min_size)
+        )
 
     @given(
         name=_slug_strategy(),

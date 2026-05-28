@@ -36,9 +36,7 @@ class RagEvalRunner:
         runner by accident.
         """
         if suite.target != "rag":
-            msg = (
-                f"RagEvalRunner requires suite.target='rag', got '{suite.target}'"
-            )
+            msg = f"RagEvalRunner requires suite.target='rag', got '{suite.target}'"
             raise ValueError(msg)
 
         case_results: list[EvalCaseResult] = []

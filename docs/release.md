@@ -20,7 +20,7 @@ secret), but adequate for solo / small-team projects.
    automated release will create it).
 2. On PyPI, **Account settings → API tokens → Add API token**.
    - **Token name**: `context-os-github-actions`.
-   - **Scope**: limit to the `context-os` project (after the first
+   - **Scope**: limit to the `context-os-ctx` project (after the first
      publish creates it) for blast-radius reasons.
 3. Copy the `pypi-…` token string.
 4. On GitHub, **Repository → Settings → Secrets and variables →
@@ -45,7 +45,7 @@ configuration.
 1. On PyPI, **Your projects → context-os → Publishing → Add a new
    publisher** (or for first-time projects: **Account settings →
    Publishing → Add a new pending publisher**).
-   - **PyPI Project Name**: `context-os`.
+   - **PyPI Project Name**: `context-os-ctx`.
    - **Owner**: `Jonathanlight`.
    - **Repository name**: `context_os`.
    - **Workflow filename**: `release.yml`.
@@ -74,7 +74,7 @@ python -m twine upload dist/* \
 
 `$PYPI_API_TOKEN_LOCAL` is a token you keep in your shell config,
 **not** the same secret committed to GitHub Actions. Same scope
-rules apply: limit to the `context-os` project.
+rules apply: limit to the `context-os-ctx` project.
 
 ## Operator checklist when cutting a release
 

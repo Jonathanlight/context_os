@@ -14,10 +14,7 @@ def _skill(name: str) -> SkillDocument:
     return SkillDocument(
         name=name,
         title=f"Skill {name}",
-        description=(
-            f"Triggers when the user wants to run {name} or invoke the "
-            f"{name} pipeline."
-        ),
+        description=(f"Triggers when the user wants to run {name} or invoke the {name} pipeline."),
     )
 
 

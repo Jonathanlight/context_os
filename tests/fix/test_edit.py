@@ -94,6 +94,4 @@ class TestEdgeCases:
 
     def test_negative_coords_rejected(self) -> None:
         with pytest.raises(ValueError):
-            TextEdit(
-                start_line=-1, start_column=0, end_line=0, end_column=0, new_text=""
-            )
+            TextEdit(start_line=-1, start_column=0, end_line=0, end_column=0, new_text="")

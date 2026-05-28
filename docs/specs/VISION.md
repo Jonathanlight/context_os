@@ -53,7 +53,7 @@ For each of the three families, ContextOS:
 2. **Strict lint, actionable advice** — every diagnostic carries a concrete suggestion
 3. **Semantic, not textual** — common AST, normalized comparison
 4. **Vendor-independent** — no LLM calls in the core
-5. **MIT open source** — `pipx install context-os`
+5. **MIT open source** — `pipx install context-os-ctx`
 
 ## The three families in `.ctx`
 

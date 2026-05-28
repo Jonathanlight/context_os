@@ -7,10 +7,19 @@ A five-minute walk-through: install, write a `.ctx`, compile it to
 
 ContextOS is a Python 3.12+ package. The CLI ships as the `ctx` console
 script. Use `pipx` so the install stays isolated from the rest of your
-Python environment:
+Python environment.
+
+> **PyPI publication is pending** — until the first release lands on
+> PyPI, install from the git source. See [`release.md`](release.md)
+> for the publishing setup.
 
 ```bash
-pipx install context-os
+# From git source (today)
+pipx install git+https://github.com/Jonathanlight/context_os.git
+
+# Once published on PyPI
+pipx install context-os-ctx
+
 ctx --version
 ```
 

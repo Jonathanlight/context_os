@@ -93,9 +93,7 @@ class TestDiagnosticRendering:
         assert '<a class="doc-link"' not in out
 
     def test_suggestion_rendered(self) -> None:
-        report = _report(
-            per_file={"x": [_diag(suggestion="rephrase with measurable criterion")]}
-        )
+        report = _report(per_file={"x": [_diag(suggestion="rephrase with measurable criterion")]})
         out = render_audit_html(report)
         assert "rephrase with measurable criterion" in out
         assert "suggestion" in out
@@ -118,9 +116,7 @@ class TestDiagnosticRendering:
 
 class TestHtmlEscape:
     def test_message_with_html_chars_is_escaped(self) -> None:
-        report = _report(
-            per_file={"x": [_diag(message="<script>alert('xss')</script>")]}
-        )
+        report = _report(per_file={"x": [_diag(message="<script>alert('xss')</script>")]})
         out = render_audit_html(report)
         # The literal script tag must NOT appear in the output as
         # an open tag — only as escaped text.
@@ -135,11 +131,7 @@ class TestHtmlEscape:
 
     def test_doc_url_is_escaped_in_href(self) -> None:
         report = _report(
-            per_file={
-                "x": [
-                    _diag(doc_url='https://example.com/"><script>alert(1)</script>')
-                ]
-            }
+            per_file={"x": [_diag(doc_url='https://example.com/"><script>alert(1)</script>')]}
         )
         out = render_audit_html(report)
         assert "<script>alert" not in out

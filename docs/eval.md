@@ -49,13 +49,17 @@ tests and real evaluation runs.
 The eval runners ship under an optional dependency group:
 
 ```bash
-pipx install context-os[eval]
+# From git source (today, PyPI publication pending)
+pipx install 'git+https://github.com/Jonathanlight/context_os.git#egg=context-os-ctx[eval]'
+
+# Once published on PyPI
+pipx install 'context-os-ctx[eval]'
 ```
 
 This pulls `anthropic` (Skills routing), `numpy` (RAG cosine), and
 `openai` (RAG embedding). The CLI command stays available without
 the extras for `--dry-run` mode; live runs surface a clear "install
-context-os[eval]" error when the SDK isn't on the path.
+context-os-ctx[eval]" error when the SDK isn't on the path.
 
 Environment variables the live providers read:
 
@@ -261,7 +265,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pipx install context-os[eval]
+      - run: pipx install 'git+https://github.com/Jonathanlight/context_os.git#egg=context-os-ctx[eval]'
       - run: ctx eval skills.eval.toml
               --skills-dir agents/skills/
               --json --output current.json
@@ -299,7 +303,7 @@ git commit -m "eval: bump baseline after skill refactor"
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| `ctx eval requires the 'eval' extras` | `[eval]` not installed | `pipx install --force context-os[eval]` |
+| `ctx eval requires the 'eval' extras` | `[eval]` not installed | `pipx install --force context-os-ctx[eval]` |
 | `skill eval needs --skills-dir <path>` | live mode without flag | Pass `--skills-dir` or `--dry-run` |
 | `Query embedding dim X does not match chunk dim Y` | model mismatch | Re-embed chunks with the model passed via `--rag-embed-model` |
 | `chunks file must be a JSON array` | top-level shape wrong | Make sure your indexer produces a JSON list, not an object |

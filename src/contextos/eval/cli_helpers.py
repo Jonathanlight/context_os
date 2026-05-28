@@ -60,10 +60,7 @@ def load_chunks(chunks_path: Path) -> list[Chunk]:
     """
     data = json.loads(chunks_path.read_text(encoding="utf-8"))
     if not isinstance(data, list):
-        msg = (
-            f"chunks file {chunks_path} must be a JSON array; "
-            f"got {type(data).__name__}"
-        )
+        msg = f"chunks file {chunks_path} must be a JSON array; got {type(data).__name__}"
         raise ValueError(msg)
     return [Chunk.model_validate(entry) for entry in data]
 
@@ -87,9 +84,7 @@ def build_dry_run_rag_provider(suite: EvalSuite) -> RagRetrievalProvider:
 
     Same role as :func:`build_dry_run_skill_provider`, for the RAG flavor.
     """
-    retrieval_table = {
-        case.query: list(case.expected_sources) for case in suite.rag_cases
-    }
+    retrieval_table = {case.query: list(case.expected_sources) for case in suite.rag_cases}
     return MockRagProvider(retrieval_table)
 
 

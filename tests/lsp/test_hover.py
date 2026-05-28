@@ -33,7 +33,7 @@ class TestRuleCodeHover:
         assert hover.range is not None
         start = hover.range.start
         end = hover.range.end
-        assert text[start.character:end.character] == "A001"
+        assert text[start.character : end.character] == "A001"
 
     def test_markup_kind_is_markdown(self) -> None:
         hover = compute_hover("A001 ...", _at(0, 1))

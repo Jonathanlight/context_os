@@ -52,9 +52,7 @@ class TestParse:
     def test_parses_skill_md_via_explicit_target(self, tmp_path: Path) -> None:
         path = tmp_path / "any-name.md"
         path.write_text(_MINIMAL_SKILL_MD, encoding="utf-8")
-        result = runner.invoke(
-            app, ["parse", str(path), "--target", "anthropic_skill"]
-        )
+        result = runner.invoke(app, ["parse", str(path), "--target", "anthropic_skill"])
         assert result.exit_code == 0, result.output
         assert '"type": "skill"' in result.output
 
