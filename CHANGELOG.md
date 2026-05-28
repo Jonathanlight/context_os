@@ -9,6 +9,93 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet.
 
+## [3.0.0] — 2026-05-28
+
+🎯 **Functional evaluation.** ContextOS no longer only validates
+*structure* (does the skill have trigger phrasing, does the RAG
+config have a freshness policy) — it now validates *behavior*. Run
+your skills against real Anthropic models and your RAG corpus
+against real OpenAI embeddings, score the results, gate CI on
+regressions.
+
+Major version bump because the conceptual surface widens: the same
+toolchain you use to lint a `CLAUDE.md` now scores whether your
+skills actually fire. No backwards-incompatible API changes — every
+v2.x consumer keeps working.
+
+### Added
+
+#### Phase 7B — Live evaluation (PRs #62–#67)
+
+- **`.eval.toml` format + AST** (PR #62) — `EvalSuite` with target
+  literal (`anthropic_skill` | `rag`), `SkillCase` (prompt +
+  expected_skill + tags), `RagCase` (query + expected_sources +
+  top_k bounded 1–100). Cross-target model validator rejects
+  mismatched case lists. Parser reuses `ContextOSParseError` so
+  eval-suite mistakes carry `file:line:column` + suggestion.
+- **Anthropic Skills evaluator** (PR #63) — `SkillRoutingProvider`
+  Protocol + `MockSkillProvider` (deterministic for tests) +
+  `AnthropicSkillProvider` (lazy SDK import, Haiku 4.5 default
+  model). Skills routing emulated via the Messages API tool-use
+  feature: each `SkillDocument` → tool definition with description
+  = trigger signal; tool-use block's name = picked skill slug.
+  `SkillEvalRunner` captures per-case errors so a flaky provider
+  doesn't waste the whole run.
+- **RAG retrieval evaluator** (PR #64) — `RagRetrievalProvider`
+  Protocol + `MockRagProvider` + `EmbeddingRagProvider` with
+  eager-stacked, row-normalized cosine matrix (each `retrieve()`
+  is one matmul). User supplies the embedding callable
+  (`EmbedQueryFn = Callable[[str], list[float]]`) and pre-indexed
+  `Chunk` list. ContextOS does **not** ship an embedding service
+  or an indexer. Pass criterion = OR semantics on
+  `expected_sources`.
+- **`ctx eval` CLI** (PR #65) — dispatches on `suite.target`,
+  `--dry-run` uses Mock providers (every case passes by
+  construction), `--json` / `--output` for CI consumption,
+  `--skills-dir` walks SKILL.md recursively (sorted-path order for
+  deterministic tool ordering), `--rag-chunks` loads pre-indexed
+  chunks from JSON, `--rag-embed-model` selects the OpenAI
+  embedding model. All eval-side imports lazy so `[eval]` extras
+  don't slow down `ctx --version`.
+- **`ctx eval-diff` for regression detection** (PR #66) — compare
+  two eval result JSON files; classify case transitions into five
+  buckets (regression / improvement / new_failure / new_pass /
+  removed). Default CI gate: exit 1 on regression only;
+  `--fail-on-new-failure` flag opt-in for stricter gating. Sticky
+  comment shape compatible with PR review workflows.
+- **Docs page** (this PR) — `docs/eval.md` covering architecture,
+  `.eval.toml` grammar, dry-run quick start, live Skills + RAG
+  setup, BYO embedding service via Python API, CI workflow with
+  `eval-diff`, troubleshooting table.
+
+### New CLI subcommands
+
+| Command | What it does |
+| --- | --- |
+| `ctx eval <suite.eval.toml>` | Run an eval suite; `--dry-run` for mock-driven smoke |
+| `ctx eval-diff <baseline> <current>` | Compare two eval JSON outputs; exit 1 on regression |
+
+### New optional-dependencies group
+
+- `[eval] = ["anthropic>=0.40", "numpy>=1.26", "openai>=1.0"]`.
+
+### Documented limitations
+
+- **Skills routing** is emulated via the Messages API tool-use
+  feature, not the actual Skills product (which lives in Claude app
+  / Claude Code, not the public API). Tool selection is the closest
+  approximation; the gap is documented in
+  `anthropic_provider.py:9`.
+- **OpenAI is the only built-in embedding provider in the CLI**.
+  Voyage / Cohere / local-model users drop down to the Python API
+  (one `EmbeddingRagProvider(chunks, embed_query)` call). Documented
+  in `docs/eval.md`.
+- **No indexer ships with ContextOS** — users feed pre-indexed
+  chunks via `--rag-chunks chunks.json`. The chunks file is
+  whatever the user's pipeline produces; we validate the shape and
+  cosine over what's there.
+- **No HTML eval report**; the JSON renderer is the bridge today.
+
 ## [2.1.0] — 2026-05-28
 
 🛠️ **Editor integration.** ContextOS now ships as a language server

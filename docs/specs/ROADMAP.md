@@ -233,23 +233,63 @@ as a language server, as a VSCode extension, and as a GitHub
 Action. All shapes share the same Python core; a diagnostic that
 fires in one surfaces identically in all.
 
-## Phase 7B — Live evaluation (planned)
+## Phase 7B — Live evaluation (✅ shipped)
 
-**Goal:** move from validating **structure** to validating
-**functionality**. Does the skill actually fire on the right
-prompts? Does RAG retrieval actually find the expected chunks?
+**Goal achieved:** move from validating **structure** to validating
+**functionality**. ContextOS now runs eval suites against the
+Anthropic Skills routing API (via tool-use emulation) and against
+in-process cosine retrieval over user-supplied embeddings, with a
+CI-grade diff command that classifies every case transition.
 
-Planned deliverables (~6 milestones):
+**Shipped (PRs #62 – #67):**
 
-- `.eval.toml` format + AST.
-- Anthropic Skills routing evaluator.
-- RAG retrieval evaluator (numpy cosine on small corpora, no FAISS).
-- `ctx eval` CLI with `--provider` / `--dry-run` / `--sample`.
-- Eval-result diff for CI regression detection.
-- Docs + ROADMAP close for 7B + bump to v3.0.0.
+- `.eval.toml` format + AST: `EvalSuite` (target literal), `SkillCase`
+  (prompt + expected_skill), `RagCase` (query + expected_sources +
+  top_k). Cross-target validators reject mismatched case lists. Parser
+  reuses `ContextOSParseError` so eval-suite mistakes get the same
+  `file:line:column` shape as `.ctx` errors (PR #62).
+- Anthropic Skills evaluator: `SkillRoutingProvider` Protocol +
+  Mock + Anthropic-backed implementation. Tool-use API emulates
+  Skills routing — each `SkillDocument` becomes a tool definition
+  whose description is the trigger signal; the model's tool choice
+  maps to the picked skill slug. Per-case error capture so a
+  flaky provider doesn't waste the whole run (PR #63).
+- RAG retrieval evaluator: `RagRetrievalProvider` Protocol + Mock
+  + `EmbeddingRagProvider` with eager-stacked, row-normalized cosine
+  matrix. User supplies the embedding callable + pre-indexed Chunks;
+  ContextOS does not ship an embedding service or an indexer.
+  OR-semantics over `expected_sources` (PR #64).
+- `ctx eval` CLI with dispatch on `suite.target`, `--dry-run`
+  Mock providers, JSON / file output, OpenAI-backed query embedding
+  via `--rag-embed-model` (PR #65).
+- `ctx eval-diff` with five-bucket classification (regression /
+  improvement / new_failure / new_pass / removed) and sticky exit
+  semantics: regressions always break CI, new failures only with
+  `--fail-on-new-failure` (PR #66).
+- Docs (this PR): full `docs/eval.md` covering architecture, AST
+  shape, dry-run quick start, live Skills + RAG setup, BYO embedding
+  service via the Python API, CI flow with eval-diff, troubleshooting.
+- v3.0.0 release — Phase 7B closes; ContextOS now ships **structural
+  validation + functional evaluation + editor integration**.
+
+**Deferred to Phase 8+:**
+
+- Multi-provider Skills (OpenAI tools, local models) — Anthropic is
+  the only Skills backend today.
+- Embedding-provider helpers (Voyage / Cohere wrappers in the CLI).
+  Users plug their own via the Python API today.
+- Eval-set growth tooling (case generation, prompt expansion).
+- HTML eval report (the JSON renderer is the bridge today).
+- Cost dashboard integration (token totals are exposed; rendering
+  them as a series chart is downstream tooling).
 
 **Anti-goals (unchanged):** no live indexing, no PDF support, no
 fine-tuning loops.
+
+**DoD met:** `ctx eval suite.toml --dry-run` works on the shipped
+fixtures (3/3 pass); live providers ship behind an `[eval]` extras
+gate with a clear install message when missing; `ctx eval-diff`
+reports regressions and exits 1 on the gate-relevant transitions.
 
 ## Phase 8+ — Post-MVP
 

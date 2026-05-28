@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "context-os"
-version = "2.1.0"
+version = "3.0.0"
 description = "The Operating System for LLM Context — analyze, generate, and compare LLM context artifacts."
 authors = [{ name = "Jonathan KABLAN" }]
 requires-python = ">=3.12"
