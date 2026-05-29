@@ -55,6 +55,12 @@ from contextos.parsers import (
     parse_markdown_file,
     parse_skill_file,
 )
+from contextos.scaffold import (
+    build_starter_document,
+    detect_project,
+    known_languages,
+    normalize_slug,
+)
 from contextos.stats import compute_stats, render_stats_cli, render_stats_json
 
 app = typer.Typer(
@@ -896,3 +902,268 @@ def fix_cmd(
         typer.echo(f"applied fixes to {len(changed)} file(s)")
     else:
         typer.echo(f"dry-run: {len(changed)} file(s) would change. Re-run with --apply.")
+
+
+# ---------------------------------------------------------------------------
+# ``ctx create`` -- scaffold a starter ``.ctx`` from a project name + languages.
+# ---------------------------------------------------------------------------
+
+_CREATE_PROJECT_HELP = "Project slug used for the ``project`` field of the new ``.ctx``."
+_CREATE_LANG_HELP = (
+    "Comma-separated list of language slugs (python,fastapi,react,...). "
+    "Pass --list-languages to see what is supported. Leave empty to "
+    "produce a stack-less starter the user fills in by hand."
+)
+_CREATE_TITLE_HELP = "Human-readable title. Defaults to the project slug."
+_CREATE_DOMAIN_HELP = "Activity domain (e.g. fintech, healthcare). Drives the identity sentence."
+_CREATE_ROLE_HELP = "Role for the LLM agent. Defaults to ``Senior software engineer``."
+_CREATE_OUTPUT_HELP = "Destination ``.ctx`` path. Defaults to <project>.ctx in the cwd."
+_CREATE_FORCE_HELP = "Overwrite the destination if it already exists."
+_CREATE_LIST_HELP = "List the language slugs supported by the scaffolder and exit."
+
+
+CreateProject = Annotated[
+    str | None,
+    typer.Argument(help=_CREATE_PROJECT_HELP),
+]
+CreateLang = Annotated[str, typer.Option("--lang", "-l", help=_CREATE_LANG_HELP)]
+CreateTitle = Annotated[str | None, typer.Option("--title", help=_CREATE_TITLE_HELP)]
+CreateDomain = Annotated[str | None, typer.Option("--domain", help=_CREATE_DOMAIN_HELP)]
+CreateRole = Annotated[str | None, typer.Option("--role", help=_CREATE_ROLE_HELP)]
+CreateOutput = Annotated[Path | None, typer.Option("--output", "-o", help=_CREATE_OUTPUT_HELP)]
+CreateForce = Annotated[bool, typer.Option("--force", "-f", help=_CREATE_FORCE_HELP)]
+CreateListLang = Annotated[bool, typer.Option("--list-languages", help=_CREATE_LIST_HELP)]
+
+
+@app.command(name="create")
+def create_cmd(
+    project: CreateProject = None,
+    lang: CreateLang = "",
+    title: CreateTitle = None,
+    domain: CreateDomain = None,
+    role: CreateRole = None,
+    output: CreateOutput = None,
+    force: CreateForce = False,
+    list_languages_flag: CreateListLang = False,
+) -> None:
+    """Scaffold a starter ``.ctx`` from a project name and language list.
+
+    Example: ``ctx create church-manager -l php,symfony --domain fintech``
+    writes ``church-manager.ctx`` with PHP / Symfony rules, the baseline
+    rules (TDD-001, SEC-001, DOC-001), and an identity sentence naming
+    the domain. Pass ``--list-languages`` to see what is supported.
+    """
+    if list_languages_flag:
+        _print_known_languages()
+        return
+
+    if project is None:
+        typer.echo("ctx create: missing argument PROJECT", err=True)
+        raise typer.Exit(code=2)
+
+    languages = _split_lang_arg(lang)
+    _warn_unknown_languages(languages)
+
+    document = build_starter_document(
+        project=project,
+        languages=languages,
+        title=title,
+        domain=domain,
+        role=role,
+    )
+
+    destination = output or Path(f"{project}.ctx")
+    _write_ctx(document, destination=destination, force=force)
+    typer.echo(f"wrote {destination}")
+
+
+# ---------------------------------------------------------------------------
+# ``ctx init`` -- detect languages from manifests in an existing repo.
+# ---------------------------------------------------------------------------
+
+_INIT_PATH_HELP = "Repository root to inspect. Defaults to the current directory."
+_INIT_PROJECT_HELP = "Override the detected project slug (defaults to the directory name)."
+_INIT_DOMAIN_HELP = "Activity domain (e.g. fintech). Optional but recommended."
+_INIT_OUTPUT_HELP = "Destination ``.ctx``. Defaults to ``<root>/<project>.ctx``."
+_INIT_FORCE_HELP = "Overwrite the destination if it already exists."
+_INIT_DRY_RUN_HELP = "Print the detected languages and the would-be document; write nothing."
+
+InitPath = Annotated[
+    Path,
+    typer.Argument(
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        readable=True,
+        help=_INIT_PATH_HELP,
+    ),
+]
+InitProject = Annotated[str | None, typer.Option("--project", help=_INIT_PROJECT_HELP)]
+InitDomain = Annotated[str | None, typer.Option("--domain", help=_INIT_DOMAIN_HELP)]
+InitRole = Annotated[str | None, typer.Option("--role", help=_CREATE_ROLE_HELP)]
+InitOutput = Annotated[Path | None, typer.Option("--output", "-o", help=_INIT_OUTPUT_HELP)]
+InitForce = Annotated[bool, typer.Option("--force", "-f", help=_INIT_FORCE_HELP)]
+InitDryRun = Annotated[bool, typer.Option("--dry-run", help=_INIT_DRY_RUN_HELP)]
+
+
+@app.command(name="init")
+def init_cmd(
+    path: InitPath = Path(),
+    project: InitProject = None,
+    domain: InitDomain = None,
+    role: InitRole = None,
+    output: InitOutput = None,
+    force: InitForce = False,
+    dry_run: InitDryRun = False,
+) -> None:
+    """Detect languages in an existing repo and scaffold a fitting ``.ctx``.
+
+    Walks ``path`` and reads manifest files (``pyproject.toml``,
+    ``package.json``, ``composer.json``, ``go.mod``, ``Cargo.toml``,
+    ``pom.xml``, ``build.gradle``) to figure out the stack, then runs
+    the same builder as ``ctx create`` -- so manual and detected
+    scaffolds produce the same shape of ``.ctx``.
+    """
+    root = path.resolve()
+    detected = detect_project(root)
+    project_name = project or root.name
+    typer.echo(f"detected languages: {', '.join(detected.languages) or '(none)'}")
+    for line in detected.rationale:
+        typer.echo(f"  - {line}")
+
+    document = build_starter_document(
+        project=project_name,
+        languages=detected.languages,
+        title=None,
+        domain=domain,
+        role=role,
+    )
+
+    if dry_run:
+        typer.echo("")
+        typer.echo(dump_ctx_string(document))
+        return
+
+    destination = output or (root / f"{project_name}.ctx")
+    _write_ctx(document, destination=destination, force=force)
+    typer.echo(f"wrote {destination}")
+
+
+# ---------------------------------------------------------------------------
+# ``ctx upgrade`` -- self-update the ``context-os-ctx`` package.
+# ---------------------------------------------------------------------------
+
+_UPGRADE_CHECK_HELP = "Only check whether a newer version is available; do not install."
+_UPGRADE_PRE_HELP = "Allow pre-release versions (alpha / beta / rc)."
+
+UpgradeCheck = Annotated[bool, typer.Option("--check", help=_UPGRADE_CHECK_HELP)]
+UpgradePre = Annotated[bool, typer.Option("--pre", help=_UPGRADE_PRE_HELP)]
+
+
+@app.command(name="upgrade")
+def upgrade_cmd(
+    check: UpgradeCheck = False,
+    pre: UpgradePre = False,
+) -> None:
+    """Check for and install a newer ``context-os-ctx`` from PyPI.
+
+    With no flags, runs ``pip install --upgrade context-os-ctx`` using
+    the same Python interpreter ``ctx`` itself runs under. With
+    ``--check``, prints the latest version available on PyPI without
+    touching anything. Use ``--pre`` to opt into pre-release builds.
+
+    Run via ``pipx upgrade context-os-ctx`` instead if you installed
+    with pipx -- the ``ctx upgrade`` shortcut is for plain ``pip`` /
+    venv installs and prints a hint otherwise.
+    """
+    from contextos.upgrade import (  # noqa: PLC0415
+        UpgradeError,
+        check_latest_version,
+        run_pip_upgrade,
+    )
+
+    typer.echo(f"current: contextos {__version__}")
+
+    try:
+        latest = check_latest_version(include_prereleases=pre)
+    except UpgradeError as exc:
+        typer.echo(f"could not reach PyPI: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(f"latest:  contextos {latest}")
+
+    if latest == __version__:
+        typer.echo("already up to date.")
+        return
+
+    if check:
+        typer.echo(f"a newer version is available: run ``ctx upgrade`` to install {latest}.")
+        return
+
+    try:
+        run_pip_upgrade(target_version=latest)
+    except UpgradeError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(f"upgraded to contextos {latest}.")
+    typer.echo("Restart your shell if ``ctx`` still reports the old version.")
+
+
+# ---------------------------------------------------------------------------
+# Scaffold helpers (private).
+# ---------------------------------------------------------------------------
+
+
+def _split_lang_arg(raw: str) -> list[str]:
+    """Split the comma-separated ``--lang`` value into normalized slugs.
+
+    Applies :func:`normalize_slug` so users can pass user-facing names
+    (``Next.js``, ``c#``, ``spring boot``) and still hit the registry.
+    Empty fragments are dropped so a trailing comma is benign.
+    """
+    return [normalize_slug(item) for item in raw.split(",") if item.strip()]
+
+
+def _warn_unknown_languages(languages: list[str]) -> None:
+    """Emit a stderr warning for any slug not in the registry.
+
+    Unknown slugs are silently dropped by the builder, but staying
+    silent is the worst UX -- the user typed ``--lang typescrpt`` and
+    got a stackless ``.ctx`` back with no clue why.
+    """
+    known = set(known_languages())
+    unknown = [slug for slug in languages if slug not in known]
+    if unknown:
+        listed = ", ".join(unknown)
+        typer.echo(
+            f"warning: unknown language slug(s): {listed} (ignored). "
+            "Run `ctx create --list-languages` to see supported slugs.",
+            err=True,
+        )
+
+
+def _print_known_languages() -> None:
+    """Print the table the user sees from ``ctx create --list-languages``."""
+    from contextos.scaffold import display_name  # noqa: PLC0415
+
+    typer.echo("Supported language slugs:")
+    for slug in known_languages():
+        typer.echo(f"  {slug:<14} {display_name(slug)}")
+
+
+def _write_ctx(document: Document, *, destination: Path, force: bool) -> None:
+    """Serialize ``document`` and write it to ``destination``.
+
+    Refuses to overwrite an existing file unless ``force`` is set --
+    blowing away an existing ``.ctx`` by accident is the kind of
+    irreversible operation worth a confirmation flag.
+    """
+    if destination.exists() and not force:
+        typer.echo(
+            f"refusing to overwrite {destination}; pass --force to replace it.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(dump_ctx_string(document), encoding="utf-8")
