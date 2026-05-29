@@ -9,6 +9,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet.
 
+## [4.2.0] — 2026-05-29
+
+First-time-user UX release. Three frictions reported on the v4.1
+scaffolding flow are fixed, plus a richer command reference.
+
+### Added
+
+- **`ctx eval-init <name> [--target rag|anthropic_skill]`** scaffolds
+  a minimal `.eval.toml` (skill or RAG) with one realistic case so
+  first-time users can immediately run
+  `ctx eval <name>.eval.toml --dry-run` and see the full pipeline.
+- **Recursive `ctx init`** -- walks sub-directories up to 4 levels
+  by default (configurable via `--depth N` or disabled with
+  `--no-recursive`), skipping vendored dirs (`node_modules`,
+  `.venv`, `vendor`, `dist`, `build`, `target`, `.next`, `.nuxt`,
+  ...). Monorepos with `frontend/` + `api/` are now detected as a
+  whole; each rationale line is prefixed with the relative path so
+  the operator can tell a nested `backend/composer.json` from the
+  root one.
+- **README** (EN + FR) gets an **Input** / **Output** column on the
+  CLI table plus 11 numbered worked examples covering the full
+  happy path (create → init → compile → lint → audit → eval-init
+  → eval → upgrade).
+
+### Changed
+
+- **`ctx eval` error message** when the suite file is missing now
+  points at `ctx eval-init` instead of relying on Typer's generic
+  "File does not exist". Exit code stays 2 (CLI usage error).
+- Every command's docstring picked up an `Examples:` block that
+  Typer surfaces under `--help`.
+
+### Tests
+
+1178 passed, 1 skipped, `mypy --strict` clean across 178 files,
+`ruff` clean. 11 new tests cover recursive detection (deep
+manifests, depth cap, skip list, symlinks), the friendly eval
+error, and `ctx eval-init` for both targets.
+
 ## [4.1.0] — 2026-05-29
 
 Scaffolding release. Adds the three commands that turn ContextOS
