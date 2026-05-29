@@ -9,6 +9,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet.
 
+## [4.1.0] — 2026-05-29
+
+Scaffolding release. Adds the three commands that turn ContextOS
+from "a linter for existing `.ctx` files" into "the way you start a
+new project's `.ctx`".
+
+### Added
+
+- **`ctx create <project> --lang ...`** scaffolds a starter `.ctx`
+  from a project name and a comma-separated language list. Baseline
+  rules (`TDD-001`, `SEC-001`, `DOC-001`) are always included, plus
+  per-language rule sets and a populated `[stack]` section. Supports
+  `--domain`, `--role`, `--title`, `--output`, `--force`, and
+  `--list-languages`.
+- **`ctx init [path] [--dry-run]`** walks an existing repository,
+  reads `pyproject.toml` / `package.json` / `composer.json` / `go.mod`
+  / `Cargo.toml` / `pom.xml` / `build.gradle` / `pubspec.yaml` /
+  `mix.exs` / `Gemfile` / `*.csproj`, and forwards the detected
+  languages to the same builder `ctx create` uses. `--dry-run`
+  prints the would-be `.ctx` without writing anything.
+- **`ctx upgrade [--check] [--pre]`** queries the PyPI JSON API for
+  the newest `context-os-ctx` and `pip install --upgrade`s it via
+  `sys.executable` so the upgrade hits the same interpreter `ctx`
+  runs under.
+- **Language catalog (waves 1-3)** -- 90+ entries spanning backend
+  (Python, PHP, TS/Node, Go, Rust, Ruby, Elixir, .NET, Java, Kotlin,
+  Dart, Scala, Swift, Clojure, Haskell), frontend (React, Next.js,
+  Remix, Vue, Nuxt, Svelte, SvelteKit, Angular, Solid, Qwik, Astro,
+  Preact, Lit), HTML-first (HTMX, Hotwire, Livewire, Alpine), mobile
+  (Flutter, React Native, KMP, Ionic, SwiftUI, Jetpack Compose),
+  desktop (Tauri, Electron, Compose Multiplatform), ML (PyTorch,
+  TensorFlow, JAX, scikit-learn, LangChain, LlamaIndex), DB/ORM
+  (Postgres, SQLAlchemy, Prisma, Drizzle, Doctrine), systems (C, C++,
+  Zig) and infra (Docker, k8s, Terraform, GitHub Actions, GraphQL,
+  gRPC, OpenAPI). Each entry carries an opinionated 1-3 rule starter
+  set and is tagged with category + adoption wave.
+- **Slug aliases** -- `Next.js`, `c#`, `ts`, `spring boot`, `nextjs`,
+  `reactnative`, etc. all normalise to canonical registry keys.
+
+### Tests
+
+1167 passed, 1 skipped, `mypy --strict` clean across 177 files,
+`ruff` clean. 38 new tests cover templates, builder, detector and
+the CLI surface (alias normalisation, force-overwrite refusal,
+dry-run, unknown-slug warning, and the upgrade flow via
+monkey-patched PyPI / pip).
+
 ## [4.0.2] — 2026-05-29
 
 README-only re-publish to refresh the PyPI project page.
