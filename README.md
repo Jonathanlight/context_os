@@ -246,6 +246,8 @@ Five consumption surfaces: **CLI** · **Python library** · **LSP** · **VSCode 
 
 | Command              | Purpose                                                              |
 |----------------------|----------------------------------------------------------------------|
+| `ctx create`         | Scaffold a starter `.ctx` from `--lang python,fastapi,react,...`     |
+| `ctx init`           | Walk an existing repo, detect the stack, write a fitting `.ctx`      |
 | `ctx parse`          | `.ctx` / Markdown / SKILL.md → AST as JSON or TOML                   |
 | `ctx compile`        | `.ctx` → target file (8 supported targets)                           |
 | `ctx lint`           | Run the 27 analyzers on a single file                                |
@@ -256,6 +258,28 @@ Five consumption surfaces: **CLI** · **Python library** · **LSP** · **VSCode 
 | `ctx eval`           | Run a `.eval.toml` against a real or mock provider                   |
 | `ctx eval-diff`      | Compare two `ctx eval --json` outputs; exit 1 on regression          |
 | `ctx fix`            | Auto-apply structured fixes; `--dry-run` default, `--apply` to write |
+| `ctx upgrade`        | Check PyPI and `pip install --upgrade context-os-ctx`                |
+
+### Scaffolding examples
+
+```bash
+# Bootstrap a brand new project's .ctx (creates ./church-manager.ctx)
+ctx create church-manager --lang php,symfony,doctrine --domain "parish management"
+
+# Mix several stacks; aliases like Next.js / c# / spring boot are accepted
+ctx create acme --lang python,fastapi,react,tailwind --domain fintech
+
+# Discover the catalogue
+ctx create --list-languages
+
+# Bootstrap from an existing repo -- detects manifests automatically
+ctx init . --project demo
+ctx init . --dry-run             # print the would-be .ctx, write nothing
+
+# Self-update from PyPI
+ctx upgrade --check              # report only
+ctx upgrade                      # pip install --upgrade context-os-ctx
+```
 
 **Universal flags:** every command has `--json` for machine-readable output.
 **HTML reports:** `ctx audit --html` and `ctx eval --html` emit self-contained HTML pages.

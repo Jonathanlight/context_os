@@ -247,6 +247,8 @@ Cinq surfaces de consommation : **CLI** · **Bibliothèque Python** · **LSP** �
 
 | Commande             | Rôle                                                                 |
 |----------------------|----------------------------------------------------------------------|
+| `ctx create`         | Génère un `.ctx` de départ depuis `--lang python,fastapi,react,...`  |
+| `ctx init`           | Parcourt un repo existant, détecte le stack, écrit un `.ctx` adapté  |
 | `ctx parse`          | `.ctx` / Markdown / SKILL.md → AST en JSON ou TOML                   |
 | `ctx compile`        | `.ctx` → fichier cible (8 cibles supportées)                         |
 | `ctx lint`           | Lance les 27 analyseurs sur un fichier                               |
@@ -257,6 +259,28 @@ Cinq surfaces de consommation : **CLI** · **Bibliothèque Python** · **LSP** �
 | `ctx eval`           | Lance un `.eval.toml` contre un provider réel ou mock                |
 | `ctx eval-diff`      | Compare deux sorties `ctx eval --json` ; exit 1 sur régression       |
 | `ctx fix`            | Applique les fixes structurés ; `--dry-run` défaut, `--apply` écrit  |
+| `ctx upgrade`        | Interroge PyPI puis `pip install --upgrade context-os-ctx`           |
+
+### Exemples de scaffolding
+
+```bash
+# Bootstrap d'un nouveau projet (crée ./church-manager.ctx)
+ctx create church-manager --lang php,symfony,doctrine --domain "gestion de paroisse"
+
+# Mélange plusieurs stacks ; les alias (Next.js / c# / spring boot) sont acceptés
+ctx create acme --lang python,fastapi,react,tailwind --domain fintech
+
+# Découvrir le catalogue
+ctx create --list-languages
+
+# Bootstrap depuis un repo existant -- détecte les manifests automatiquement
+ctx init . --project demo
+ctx init . --dry-run             # imprime le .ctx qui serait écrit, n'écrit rien
+
+# Mise à jour depuis PyPI
+ctx upgrade --check              # vérifie uniquement
+ctx upgrade                      # pip install --upgrade context-os-ctx
+```
 
 **Flags universels :** chaque commande accepte `--json` pour une sortie machine-readable.
 **Rapports HTML :** `ctx audit --html` et `ctx eval --html` produisent du HTML autonome.
