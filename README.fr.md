@@ -245,42 +245,94 @@ Cinq surfaces de consommation : **CLI** · **Bibliothèque Python** · **LSP** �
 
 ## Référence CLI
 
-| Commande             | Rôle                                                                 |
-|----------------------|----------------------------------------------------------------------|
-| `ctx create`         | Génère un `.ctx` de départ depuis `--lang python,fastapi,react,...`  |
-| `ctx init`           | Parcourt un repo existant, détecte le stack, écrit un `.ctx` adapté  |
-| `ctx parse`          | `.ctx` / Markdown / SKILL.md → AST en JSON ou TOML                   |
-| `ctx compile`        | `.ctx` → fichier cible (8 cibles supportées)                         |
-| `ctx lint`           | Lance les 27 analyseurs sur un fichier                               |
-| `ctx diff`           | Diff sémantique au niveau de l'AST entre deux Documents              |
-| `ctx audit`          | Parcourt un repo, lint tout, applique les règles cross-artefacts     |
-| `ctx stats`          | Agrège les statistiques au niveau du corpus depuis un audit          |
-| `ctx lsp`            | Serveur LSP sur stdio (nécessite l'extras `[lsp]`)                   |
-| `ctx eval`           | Lance un `.eval.toml` contre un provider réel ou mock                |
-| `ctx eval-diff`      | Compare deux sorties `ctx eval --json` ; exit 1 sur régression       |
-| `ctx fix`            | Applique les fixes structurés ; `--dry-run` défaut, `--apply` écrit  |
-| `ctx upgrade`        | Interroge PyPI puis `pip install --upgrade context-os-ctx`           |
+La colonne **Input** indique ce que la commande attend en argument positionnel :
 
-### Exemples de scaffolding
+- _aucun_ — pas d'argument, la commande est autonome
+- _fichier_ — un chemin vers un fichier existant (ex. `CLAUDE.md`, `project.ctx`)
+- _dossier_ — un chemin vers un dossier (typiquement la racine d'un repo)
+- _deux fichiers_ — deux chemins (pour `diff` et `eval-diff`)
+
+| Commande        | Input                | Output                                  | Rôle                                                                 |
+|-----------------|----------------------|------------------------------------------|----------------------------------------------------------------------|
+| `ctx create`    | _aucun_              | nouveau `<project>.ctx`                  | Scaffold un `.ctx` de départ depuis `--lang python,fastapi,react,...`|
+| `ctx init`      | dossier (def. `.`)   | nouveau `<root>/<dirname>.ctx`           | Parcourt un repo récursivement, détecte le stack, écrit un `.ctx`    |
+| `ctx eval-init` | _aucun_              | nouveau `<name>.eval.toml`               | Scaffold un `.eval.toml` minimal (suite pour `ctx eval`)             |
+| `ctx parse`     | fichier              | JSON ou TOML sur stdout                  | `.ctx` / Markdown / SKILL.md → AST                                   |
+| `ctx compile`   | fichier (`.ctx`)     | fichier cible sur stdout ou `-o`         | `.ctx` → CLAUDE.md / AGENTS.md / cursor / copilot / cline / windsurf |
+| `ctx lint`      | fichier              | diagnostics sur stdout                   | Lance les 27 analyseurs sur un fichier                               |
+| `ctx diff`      | deux fichiers        | diff unifié sur stdout                   | Diff sémantique AST entre deux Documents                             |
+| `ctx audit`     | dossier              | rapport sur stdout / HTML via `-o`       | Parcourt un repo, lint tout, applique les règles cross-artefacts     |
+| `ctx stats`     | dossier              | JSON ou texte agrégé                     | Agrège les statistiques au niveau du corpus depuis un audit          |
+| `ctx fix`       | fichier              | diff unifié ou fichier modifié           | Fixes structurés ; `--dry-run` défaut, `--apply` pour écrire         |
+| `ctx eval`      | fichier (`.eval.toml`)| rapport pass/fail                       | Lance un `.eval.toml` contre un provider réel ou mock                |
+| `ctx eval-diff` | deux fichiers        | rapport de régression                    | Compare deux sorties `ctx eval --json` ; exit 1 sur régression       |
+| `ctx lsp`       | _aucun_              | LSP sur stdio                            | Serveur LSP (nécessite l'extras `[lsp]`)                             |
+| `ctx upgrade`   | _aucun_              | met à jour l'installation                | Interroge PyPI puis `pip install --upgrade context-os-ctx`           |
+
+### Exemples concrets
 
 ```bash
-# Bootstrap d'un nouveau projet (crée ./church-manager.ctx)
+# === Démarrer un projet from scratch =======================================
+
+# 1. Crée un .ctx pour un projet tout neuf
 ctx create church-manager --lang php,symfony,doctrine --domain "gestion de paroisse"
+# → ./church-manager.ctx
 
-# Mélange plusieurs stacks ; les alias (Next.js / c# / spring boot) sont acceptés
+# 2. Mélange plusieurs stacks ; les alias (Next.js / c# / spring boot) sont acceptés
 ctx create acme --lang python,fastapi,react,tailwind --domain fintech
+# → ./acme.ctx
 
-# Découvrir le catalogue
+# 3. Découvre le catalogue (90+ slugs en 4 vagues)
 ctx create --list-languages
 
-# Bootstrap depuis un repo existant -- détecte les manifests automatiquement
-ctx init . --project demo
-ctx init . --dry-run             # imprime le .ctx qui serait écrit, n'écrit rien
+# === Démarrer depuis un repo existant ======================================
 
-# Mise à jour depuis PyPI
-ctx upgrade --check              # vérifie uniquement
+# 4. Auto-détecte le stack du dossier courant (récursif par défaut)
+ctx init                          # → ./<dirname>.ctx
+ctx init . --project demo         # → ./demo.ctx
+ctx init . --dry-run              # imprime le .ctx, n'écrit rien
+ctx init . --no-recursive         # n'inspecte que la racine
+ctx init . --depth 2              # limite la récursion à 2 niveaux
+
+# === Compiler un .ctx vers des fichiers d'agent ============================
+
+# 5. .ctx → fichier cible (une des 8 cibles)
+ctx compile project.ctx --target claude_code  --output-dir .   # → ./CLAUDE.md
+ctx compile project.ctx --target codex        --output-dir .   # → ./AGENTS.md
+ctx compile project.ctx --target cursor       --output-dir .   # → ./.cursor/rules/agent.mdc
+ctx compile project.ctx --target copilot      --output-dir .   # → ./.github/copilot-instructions.md
+
+# === Linter un fichier d'agent existant ====================================
+
+# 6. Lint un CLAUDE.md / AGENTS.md / SKILL.md (--target requis pour le .md)
+ctx lint CLAUDE.md --target claude_code
+ctx lint SKILL.md  --target anthropic_skill
+
+# 7. Parcourt tout le repo et lint chaque fichier d'agent
+ctx audit .
+ctx audit . --html --output audit.html       # rapport HTML autonome
+
+# === Évaluer skills / RAG ==================================================
+
+# 8. ctx eval a besoin d'un .eval.toml. Scaffold-le d'abord :
+ctx eval-init skills                           # → ./skills.eval.toml (cible Skill)
+ctx eval-init policy --target rag              # → ./policy.eval.toml (cible RAG)
+
+# 9. Smoke-test avec --dry-run (pas de clé API, pas de coût)
+ctx eval skills.eval.toml --dry-run
+ctx eval policy.eval.toml --dry-run --rag-chunks chunks.json
+
+# 10. Run réel (nécessite ANTHROPIC_API_KEY ou OPENAI_API_KEY)
+ctx eval skills.eval.toml --skills-dir ./skills/
+
+# === Maintenance ===========================================================
+
+# 11. Mise à jour de la CLI
+ctx upgrade --check              # vérifie seulement
 ctx upgrade                      # pip install --upgrade context-os-ctx
 ```
+
+**Aide par commande :** chaque commande imprime des exemples concrets sous `--help` (ex. `ctx init --help`, `ctx eval --help`).
 
 **Flags universels :** chaque commande accepte `--json` pour une sortie machine-readable.
 **Rapports HTML :** `ctx audit --html` et `ctx eval --html` produisent du HTML autonome.

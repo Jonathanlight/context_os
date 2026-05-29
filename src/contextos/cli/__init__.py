@@ -532,7 +532,7 @@ _EVAL_RAG_EMBED_MODEL_HELP = (
 
 EvalSuiteFile = Annotated[
     Path,
-    typer.Argument(exists=True, dir_okay=False, readable=True, help=_EVAL_SUITE_HELP),
+    typer.Argument(dir_okay=False, readable=True, help=_EVAL_SUITE_HELP),
 ]
 EvalDryRun = Annotated[bool, typer.Option("--dry-run", help=_EVAL_DRY_RUN_HELP)]
 EvalJson = Annotated[
@@ -623,6 +623,14 @@ def eval_cmd(
     if json_output and html_output:
         typer.echo("--json and --html are mutually exclusive", err=True)
         raise typer.Exit(code=1)
+
+    if not suite_file.is_file():
+        typer.echo(f"ctx eval: suite file '{suite_file}' does not exist.", err=True)
+        typer.echo(
+            "Scaffold one with:  ctx eval-init <name> [--target rag|anthropic_skill]",
+            err=True,
+        )
+        raise typer.Exit(code=2)
 
     try:
         suite = parse_eval_file(suite_file)
@@ -948,10 +956,17 @@ def create_cmd(
 ) -> None:
     """Scaffold a starter ``.ctx`` from a project name and language list.
 
-    Example: ``ctx create church-manager -l php,symfony --domain fintech``
-    writes ``church-manager.ctx`` with PHP / Symfony rules, the baseline
-    rules (TDD-001, SEC-001, DOC-001), and an identity sentence naming
-    the domain. Pass ``--list-languages`` to see what is supported.
+    Input:  none -- this command does not read any file.
+    Output: a new ``<project>.ctx`` (or ``--output <path>``).
+
+    Examples:
+
+    \b
+        ctx create church-manager -l php,symfony --domain "parish management"
+        ctx create acme -l python,fastapi,react,tailwind --domain fintech
+        ctx create demo -l Next.js,c#                 # aliases accepted
+        ctx create demo                                # minimal stack-less starter
+        ctx create --list-languages                    # discover the catalogue
     """
     if list_languages_flag:
         _print_known_languages()
@@ -987,6 +1002,16 @@ _INIT_DOMAIN_HELP = "Activity domain (e.g. fintech). Optional but recommended."
 _INIT_OUTPUT_HELP = "Destination ``.ctx``. Defaults to ``<root>/<project>.ctx``."
 _INIT_FORCE_HELP = "Overwrite the destination if it already exists."
 _INIT_DRY_RUN_HELP = "Print the detected languages and the would-be document; write nothing."
+_INIT_NO_RECURSIVE_HELP = (
+    "Only inspect the root directory. Default behaviour walks "
+    "sub-directories so monorepos (frontend/ + api/, etc.) are "
+    "detected too."
+)
+_INIT_DEPTH_HELP = (
+    "Maximum recursion depth for the manifest scan. 1 = root only "
+    "(equivalent to --no-recursive). Default 4 covers nearly every "
+    "real layout without scanning huge trees."
+)
 
 InitPath = Annotated[
     Path,
@@ -1004,6 +1029,8 @@ InitRole = Annotated[str | None, typer.Option("--role", help=_CREATE_ROLE_HELP)]
 InitOutput = Annotated[Path | None, typer.Option("--output", "-o", help=_INIT_OUTPUT_HELP)]
 InitForce = Annotated[bool, typer.Option("--force", "-f", help=_INIT_FORCE_HELP)]
 InitDryRun = Annotated[bool, typer.Option("--dry-run", help=_INIT_DRY_RUN_HELP)]
+InitNoRecursive = Annotated[bool, typer.Option("--no-recursive", help=_INIT_NO_RECURSIVE_HELP)]
+InitDepth = Annotated[int, typer.Option("--depth", min=1, max=10, help=_INIT_DEPTH_HELP)]
 
 
 @app.command(name="init")
@@ -1015,17 +1042,31 @@ def init_cmd(
     output: InitOutput = None,
     force: InitForce = False,
     dry_run: InitDryRun = False,
+    no_recursive: InitNoRecursive = False,
+    depth: InitDepth = 4,
 ) -> None:
     """Detect languages in an existing repo and scaffold a fitting ``.ctx``.
 
-    Walks ``path`` and reads manifest files (``pyproject.toml``,
+    Walks ``path`` recursively (up to ``--depth`` levels, default 4)
+    and reads every manifest it finds (``pyproject.toml``,
     ``package.json``, ``composer.json``, ``go.mod``, ``Cargo.toml``,
-    ``pom.xml``, ``build.gradle``) to figure out the stack, then runs
-    the same builder as ``ctx create`` -- so manual and detected
-    scaffolds produce the same shape of ``.ctx``.
+    ``pubspec.yaml``, ``pom.xml``, ``build.gradle``, ``mix.exs``,
+    ``Gemfile``, ``Dockerfile``, ``*.csproj``). Each detection is
+    reported with the file that triggered it so the operator can see
+    why a language landed in the produced ``.ctx``.
+
+    Examples (working dir = repo root):
+
+    \b
+        ctx init                              # scan ., write ./<dirname>.ctx
+        ctx init . --project demo             # override the slug
+        ctx init . --dry-run                  # print the .ctx, write nothing
+        ctx init . --no-recursive             # only inspect the root manifest
+        ctx init . --depth 2                  # limit recursion to 2 levels
+        ctx init . --domain fintech           # populate the identity sentence
     """
     root = path.resolve()
-    detected = detect_project(root)
+    detected = detect_project(root, recursive=not no_recursive, max_depth=depth)
     project_name = project or root.name
     typer.echo(f"detected languages: {', '.join(detected.languages) or '(none)'}")
     for line in detected.rationale:
@@ -1167,3 +1208,92 @@ def _write_ctx(document: Document, *, destination: Path, force: bool) -> None:
         raise typer.Exit(code=1)
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(dump_ctx_string(document), encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# ``ctx eval-init`` -- scaffold a minimal ``.eval.toml`` suite.
+# ---------------------------------------------------------------------------
+
+_EVAL_INIT_NAME_HELP = "Project slug for the scaffolded suite (becomes ``project = '<name>'``)."
+_EVAL_INIT_TARGET_HELP = (
+    "Suite target: ``anthropic_skill`` (default) for Skill evaluation, "
+    "``rag`` for retrieval evaluation. Pick the one matching the "
+    "artefact you want to test."
+)
+_EVAL_INIT_OUTPUT_HELP = (
+    "Destination path. Defaults to ``<name>.eval.toml`` in the working directory."
+)
+_EVAL_INIT_FORCE_HELP = "Overwrite the destination if it already exists."
+
+EvalInitName = Annotated[str, typer.Argument(help=_EVAL_INIT_NAME_HELP)]
+EvalInitTarget = Annotated[str, typer.Option("--target", "-t", help=_EVAL_INIT_TARGET_HELP)]
+EvalInitOutput = Annotated[Path | None, typer.Option("--output", "-o", help=_EVAL_INIT_OUTPUT_HELP)]
+EvalInitForce = Annotated[bool, typer.Option("--force", "-f", help=_EVAL_INIT_FORCE_HELP)]
+
+
+@app.command(name="eval-init")
+def eval_init_cmd(
+    name: EvalInitName,
+    target: EvalInitTarget = "anthropic_skill",
+    output: EvalInitOutput = None,
+    force: EvalInitForce = False,
+) -> None:
+    """Scaffold a minimal ``.eval.toml`` so ``ctx eval`` has something to chew on.
+
+    Without this command, first-time users hit "Invalid value for
+    SUITE_FILE: File does not exist" because the suite file is a
+    hand-written artefact whose format isn't obvious. ``ctx eval-init``
+    writes a sample with one realistic case so the operator can
+    immediately run ``ctx eval <name>.eval.toml --dry-run`` and see
+    the full pipeline.
+
+    Examples:
+
+    \b
+        ctx eval-init skills                  # → ./skills.eval.toml (Skill target)
+        ctx eval-init policy --target rag     # → ./policy.eval.toml (RAG target)
+        ctx eval-init demo -o tests/demo.eval.toml
+    """
+    if target not in ("anthropic_skill", "rag"):
+        typer.echo(
+            f"ctx eval-init: unknown --target '{target}'. Supported: anthropic_skill, rag.",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+    destination = output or Path(f"{name}.eval.toml")
+    if destination.exists() and not force:
+        typer.echo(
+            f"refusing to overwrite {destination}; pass --force to replace it.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    payload = _EVAL_SUITE_SAMPLES[target].format(name=name)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(payload, encoding="utf-8")
+    typer.echo(f"wrote {destination}")
+    typer.echo(f"smoke-test with:  ctx eval {destination} --dry-run")
+
+
+_EVAL_SUITE_SAMPLES: dict[str, str] = {
+    "anthropic_skill": (
+        'project = "{name}"\n'
+        'target = "anthropic_skill"\n'
+        "\n"
+        "[[skill_case]]\n"
+        'name = "happy-path"\n'
+        'prompt = "Extract the line items from this invoice.pdf"\n'
+        'expected_skill = "pdf-extract"\n'
+    ),
+    "rag": (
+        'project = "{name}"\n'
+        'target = "rag"\n'
+        "\n"
+        "[[rag_case]]\n"
+        'name = "vacation-policy"\n'
+        'query = "What is the maximum vacation balance?"\n'
+        'expected_sources = ["docs/policies/vacation.md"]\n'
+        "top_k = 5\n"
+    ),
+}

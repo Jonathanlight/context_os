@@ -45,8 +45,90 @@ class DetectedProject(BaseModel):
     )
 
 
-def detect_project(root: Path) -> DetectedProject:
-    """Inspect ``root`` and return the detected languages + rationale."""
+SKIP_DIRECTORIES: frozenset[str] = frozenset(
+    {
+        ".git",
+        ".hg",
+        ".svn",
+        ".jj",
+        ".venv",
+        "venv",
+        "env",
+        "node_modules",
+        "vendor",
+        "dist",
+        "build",
+        "target",
+        "out",
+        ".next",
+        ".nuxt",
+        ".svelte-kit",
+        ".astro",
+        ".turbo",
+        ".cache",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".tox",
+        ".coverage",
+        "__pycache__",
+        ".idea",
+        ".vscode",
+        ".gradle",
+        ".m2",
+        "Pods",
+        "DerivedData",
+    }
+)
+"""Directory names skipped by :func:`detect_project` when walking recursively.
+
+Conservative list -- it covers VCS metadata, vendored deps, build
+caches, and IDE state but never anything that would plausibly host a
+user-authored manifest.
+"""
+
+_MANIFEST_FILENAMES: frozenset[str] = frozenset(
+    {
+        "composer.json",
+        "pyproject.toml",
+        "setup.py",
+        "requirements.txt",
+        "package.json",
+        "go.mod",
+        "Cargo.toml",
+        "pubspec.yaml",
+        "pom.xml",
+        "build.gradle",
+        "build.gradle.kts",
+        "mix.exs",
+        "Gemfile",
+        "Dockerfile",
+        "compose.yaml",
+        "docker-compose.yml",
+    }
+)
+"""Filenames that mark a sub-directory worth re-scanning recursively.
+
+A directory is only re-scanned when it contains at least one of these
+files; otherwise we don't recurse, which keeps walks fast on big
+monorepos.
+"""
+
+
+def detect_project(root: Path, *, recursive: bool = True, max_depth: int = 4) -> DetectedProject:
+    """Inspect ``root`` and return the detected languages + rationale.
+
+    :param recursive: when ``True`` (the default) the detector walks
+        sub-directories up to ``max_depth`` looking for nested
+        manifests -- catches monorepos with ``frontend/`` + ``api/``
+        sub-projects, or Symfony apps with a ``client/`` Angular
+        bundle. When ``False`` only the root is inspected (the v4.1
+        behaviour, kept for tests and for fast checks).
+    :param max_depth: hard cap on recursion depth to keep walks
+        bounded on huge trees. ``1`` means "root only" (equivalent to
+        ``recursive=False``); ``4`` covers nearly every real layout
+        without scanning further than necessary.
+    """
     detected: list[str] = []
     rationale: list[str] = []
 
@@ -58,19 +140,74 @@ def detect_project(root: Path) -> DetectedProject:
         detected.append(slug)
         rationale.append(f"{display_name(slug)} <- {source}")
 
-    _detect_php(root, add)
-    _detect_python(root, add)
-    _detect_js(root, add)
-    _detect_go(root, add)
-    _detect_rust(root, add)
-    _detect_dart_flutter(root, add)
-    _detect_java(root, add)
-    _detect_dotnet(root, add)
-    _detect_elixir(root, add)
-    _detect_ruby(root, add)
-    _detect_infra(root, add)
+    _run_detectors(root, add)
+    if recursive:
+        for sub_root in _iter_sub_roots(root, max_depth=max_depth):
+            _run_detectors(sub_root, add, prefix=sub_root.relative_to(root).as_posix() + "/")
 
     return DetectedProject(root=root, languages=detected, rationale=rationale)
+
+
+def _run_detectors(root: Path, add: Adder, *, prefix: str = "") -> None:
+    """Apply every per-ecosystem detector to ``root``.
+
+    ``prefix`` is prepended to every rationale source string so the
+    operator can tell a nested ``backend/composer.json`` apart from
+    the root one in the ``ctx init`` output.
+    """
+    nested = add if not prefix else _prefixed_adder(add, prefix=prefix)
+    _detect_php(root, nested)
+    _detect_python(root, nested)
+    _detect_js(root, nested)
+    _detect_go(root, nested)
+    _detect_rust(root, nested)
+    _detect_dart_flutter(root, nested)
+    _detect_java(root, nested)
+    _detect_dotnet(root, nested)
+    _detect_elixir(root, nested)
+    _detect_ruby(root, nested)
+    _detect_infra(root, nested)
+
+
+def _prefixed_adder(add: Adder, *, prefix: str) -> Adder:
+    """Wrap ``add`` so every rationale line carries the relative prefix."""
+
+    def wrapped(slug: str, source: str) -> None:
+        add(slug, f"{prefix}{source}")
+
+    return wrapped
+
+
+def _iter_sub_roots(root: Path, *, max_depth: int) -> list[Path]:
+    """Return every sub-directory under ``root`` that hosts a manifest.
+
+    Walks at most ``max_depth`` levels deep, skipping
+    :data:`SKIP_DIRECTORIES`. A directory is only yielded when at
+    least one entry from :data:`_MANIFEST_FILENAMES` lives directly
+    in it -- avoiding pointless re-scans of plain doc / asset
+    folders.
+    """
+    sub_roots: list[Path] = []
+    stack: list[tuple[Path, int]] = [(root, 0)]
+    while stack:
+        current, depth = stack.pop()
+        if depth >= max_depth:
+            continue
+        try:
+            entries = list(current.iterdir())
+        except (OSError, PermissionError):
+            continue
+        for entry in entries:
+            if not entry.is_dir() or entry.is_symlink():
+                continue
+            if entry.name in SKIP_DIRECTORIES:
+                continue
+            if entry == root:
+                continue
+            stack.append((entry, depth + 1))
+            if any((entry / name).is_file() for name in _MANIFEST_FILENAMES):
+                sub_roots.append(entry)
+    return sub_roots
 
 
 # ---------------------------------------------------------------------------
