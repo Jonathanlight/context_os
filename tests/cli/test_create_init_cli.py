@@ -162,6 +162,85 @@ def test_upgrade_reports_pypi_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "could not reach PyPI" in result.output
 
 
+def test_eval_friendly_error_when_suite_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["eval", "skills.eval.toml", "--dry-run"])
+    # Exit 2 (CLI usage error) + actionable hint pointing to eval-init.
+    assert result.exit_code == 2
+    assert "does not exist" in result.output
+    assert "ctx eval-init" in result.output
+
+
+def test_eval_init_scaffolds_skill_suite(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["eval-init", "skills"])
+
+    assert result.exit_code == 0, result.output
+    suite = tmp_path / "skills.eval.toml"
+    assert suite.is_file()
+    text = suite.read_text(encoding="utf-8")
+    assert 'project = "skills"' in text
+    assert 'target = "anthropic_skill"' in text
+    assert "[[skill_case]]" in text
+
+
+def test_eval_init_scaffolds_rag_suite_with_custom_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    output = tmp_path / "tests" / "policy.eval.toml"
+    result = runner.invoke(
+        app,
+        ["eval-init", "policy", "--target", "rag", "--output", str(output)],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert output.is_file()
+    text = output.read_text(encoding="utf-8")
+    assert 'target = "rag"' in text
+    assert "[[rag_case]]" in text
+
+
+def test_eval_init_rejects_unknown_target(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["eval-init", "demo", "--target", "nonsense"])
+    assert result.exit_code == 2
+    assert "unknown --target" in result.output
+
+
+def test_init_recurses_into_subdirs(tmp_path: Path) -> None:
+    (tmp_path / "api").mkdir()
+    (tmp_path / "api" / "pyproject.toml").write_text(
+        '[project]\nname = "api"\ndependencies = ["fastapi>=0.110"]\n',
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(app, ["init", str(tmp_path), "--project", "demo", "--dry-run"])
+
+    assert result.exit_code == 0, result.output
+    assert "fastapi" in result.output
+    assert "api/" in result.output
+
+
+def test_init_no_recursive_ignores_subdirs(tmp_path: Path) -> None:
+    (tmp_path / "api").mkdir()
+    (tmp_path / "api" / "pyproject.toml").write_text(
+        '[project]\nname = "api"\ndependencies = ["fastapi>=0.110"]\n',
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        ["init", str(tmp_path), "--project", "demo", "--dry-run", "--no-recursive"],
+    )
+
+    assert result.exit_code == 0, result.output
+    # fastapi was nested -- with --no-recursive it must NOT be picked up.
+    assert "fastapi" not in result.output
+
+
 def test_upgrade_install_invokes_pip(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "contextos.upgrade.check_latest_version",
